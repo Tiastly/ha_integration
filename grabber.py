@@ -3,10 +3,11 @@ semester based to room based
 '''
 import asyncio
 import datetime
-import aiohttp
+import requests
 import json
-from timeit import default_timer
-from concurrent.futures import ThreadPoolExecutor
+
+# from concurrent.futures import ThreadPoolExecutor
+import concurrent.futures
 
 studenplan = {
     'e_eit_gs_1_ws23',
@@ -15,74 +16,63 @@ studenplan = {
     'e_weitip_1_ws23'
 }
 
-START_TIME = default_timer()
-
 
 def weekInfo():
-  today = datetime.date.today()
-  number = today.isocalendar()[1]
-  # isWeekend = today.isocalendar()[2]
-  # return number
-  return 52
+    today = datetime.date.today()
+    number = today.isocalendar()[1]
+    # isWeekend = today.isocalendar()[2]
+    # return number
+    return 51
 
 
-async def single_request(url):
-  data = []
-  async with aiohttp.ClientSession() as session:
-    async with session.get(url) as request:
-      try:
-        assert request.status == 200
-        resp = await request.json()
-        resp = resp["events"] 
+def single_request(url):
+    data = []
+    response = requests.get(url)
+    try:
+        assert response.status_code == 200
+        resp = response.json()["events"]
         if resp:
-          for lecture in resp:
-              if "id" and "meta" in lecture:
-                lecture.pop("id")
-                lecture.pop("meta")
-            # data["title"] = lecture["title"]
-            # data["start"] = lecture["start"]
-            # data["end"] = lecture["end"]
-            # data["duration"] = lecture["duration"]
-            # data["location"] = lecture["location"]
-              data.append(lecture)
-
-      except AssertionError:
+            for lecture in resp:
+                if "id" and "meta" in lecture:
+                    lecture.pop("id")
+                    lecture.pop("meta")
+                # data["title"] = lecture["title"]
+                # data["start"] = lecture["start"]
+                # data["end"] = lecture["end"]
+                # data["duration"] = lecture["duration"]
+                # data["location"] = lecture["location"]
+                data.append(lecture)
+    except AssertionError:
         print("connection error")
-      except Exception as e:
+    except Exception as e:
         print("expection in single_request:{}".format(e))
-  print(data)
-  return data
+
+    return data
+
 
 async def full_request():
-  tasks = []
-  week = weekInfo()
-  for plan in studenplan:
-    url = f'https://spluseins.de/api/splus/{plan}/{week}'
-  await asyncio.gather(*task)
-    # task = asyncio.ensure_future(single_request(url))
-  # tasks = task.append()
+    tasks = []
+    week = weekInfo()
+    urls = []
+    for plan in studenplan:
+        urls.append(f'https://spluseins.de/api/splus/{plan}/{week}')
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(studenplan)) as executor:
+        future_to_url = [executor.submit(single_request, url) for url in urls]
+        for future in concurrent.futures.as_completed(future_to_url):
+            try:
+                tasks += future.result()
+            except Exception as e:
+                print("expection in full_request:{}".format(e))
+    
+    return dict(t) for t in {tuple(d.items()) for d in tasks}
+    
 
 
-
-async def start_async_process():
-    print("{0:<30} {1:>20}".format("No", "Completed at"))
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        with requests.Session() as session:
-            loop = asyncio.get_event_loop()
-            START_TIME = default_timer()
-            tasks = [
-                loop.run_in_executor(
-                    executor,
-                    request,
-                    *(session, i)
-                )
-                for i in range(15)
-            ]
-            for response in await asyncio.gather(*tasks):
-                pass
+async def search_location(lo):
+    await full_request()
 
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
-    future = asyncio.ensure_future(single_request("https://spluseins.de/api/splus/e_eitip_gs_1_ws23/51"))
+    future = asyncio.ensure_future(full_request())
     loop.run_until_complete(future)
