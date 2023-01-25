@@ -1,0 +1,10 @@
+{
+    "domain": "TTGrabber",
+    "name": "timetable grabber ostfalia",
+    "documentation": "readme.md",
+    "requirements": ["aiohttp = 3.8.3"],
+    "dependencies": [],
+    "codeowners": [
+      "@tiastly"
+    ]
+  }yt
