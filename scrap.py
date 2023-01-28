@@ -25,7 +25,7 @@ logging.basicConfig(
 logger = logging.getLogger("scrap")
 logging.getLogger("chardet.charsetprober") .disabled = True
 
-
+#today's all timetable
 class Scrap():
     def __init__(self, now, location = None):
         self._now = now
@@ -37,8 +37,6 @@ class Scrap():
         # isWeekend = today.isocalendar()[2]
         # return number
         return 51
-
-    # 只要当天的课表就行
 
     async def single_request(self, url: str, **kwargs):
         data = []
