@@ -1,0 +1,38 @@
+{
+    "config": {
+        "flow_title": "E-Ink_Contoller",
+        "abort": {
+            "single_instance_allowed":"",
+            "no_devices_found": "No devices found on the network",
+            "already_configured":"registered device, delete first",
+            "invalid room":"Roomnumber not in Roomlist"
+        },
+        "error": {
+            "invalid room": "room not in roomlist"
+        },
+        "step": {
+            "confirm": {
+                "description": "Do you want to start set up?"
+            },
+            "settings": {
+                "title": "Display  Settings",
+                "description": "This set the roominfomation about this display, device should ONLY be MQTT discovered. move the scrollbar to choose the refreshTime",
+                "data": {
+                    "room": "roomNr",
+                    "roomtype": "roomType",
+                    "time_delay": "delay_min"
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "default_notification_title": "Default Notification Title. Space to disable."
+                },
+                "title": "Configure HASS.Agent"
+            }
+        }
+    }
+}

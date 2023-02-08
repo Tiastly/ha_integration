@@ -1,14 +1,13 @@
 {
-    "domain": "TTGrabber",
-    "name": "ostfalia timetable grabber ",
-    "integration_type": "hub",
-    "documentation": "readme.md",
-    "requirements": [
-      "aiofiles == 0.7.0",
-    "dateutil == 2.8.2"],
-    "dependencies": [],
-    "version": "0.1.0",
-    "codeowners": [
-      "@tiastly"
-    ]
-  }
+  "domain": "scheduletracker",
+  "name": "ostfalia timetable grabber",
+  "config_flow": true,
+  "documentation": "README.md",
+  "requirements": [],
+  "dependencies": ["mqtt"],
+  "mqtt": ["init/devices/"],
+  "codeowners": [
+    "@tiastly"
+  ],
+  "iot_class": "local_push"
+}

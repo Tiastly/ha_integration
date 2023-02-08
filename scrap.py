@@ -1,173 +1,363 @@
-'''
-semester based to room based
-'''
-import asyncio
-import aiohttp
-import concurrent.futures
-# from concurrent.futures import ThreadPoolExecutor
+"""api scrap and row processing"""
+from __future__ import annotations
 import datetime
-from datetime import date
 
+# from datetime import date
 
 import json
 import logging
-import sys
+import aiohttp
 import aiofiles
+import dateutil.parser
+import concurrent.futures
 
-from studenplan import STUDEN_PLAN
+# from homeassistant.core import HomeAssistant
+# from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-logging.basicConfig(
-    format="%(asctime) s %(levelname) s:%(name) s: %(message) s",
-    level=logging.DEBUG,
-    datefmt="%H:%M:%S",
-    stream=sys.stderr,
-)
-logger = logging.getLogger("scrap")
-logging.getLogger("chardet.charsetprober") .disabled = True
+# from homeassistant.util.dt import now
 
-#today's all timetable
-class Scrap():
-    def __init__(self, now, location = None):
+from .studenplan import STUDEN_PLAN
+from .const import TIME_SHIFT, t, BASE_API_URL
+
+_LOGGER = logging.getLogger(__name__)
+
+#  today's all timetable
+
+
+class Scrap:
+    """scrap the classinfomation"""
+
+    def __init__(self, session, now, location=None):
         self._now = now
+        self._session = session
         self._lo = location
 
-    def weekInfo(self):
-        today = self._now.date()
-        number = today.isocalendar()[1]
-        # isWeekend = today.isocalendar()[2]
+    def week_info(self):
+        """week infomation"""
+        # today = self._now.date()
+        # number = today.isocalendar()[1]
         # return number
-        return 51
+        return 51  # WARN test only
 
-    async def single_request(self, url: str, **kwargs):
+    async def single_request(self, url: str):
+        """processing the single url requst"""
         data = []
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, **kwargs) as response:
-                    response.raise_for_status()
-                    logger.info(
-                        "Got response [%s] for URL: %s", response.status, url)
-                    resp = await response.json()
-                    resp = resp["events"]
-                    if resp:
-                        for lecture in resp:
-                            # only scrap todays lectures
-                            if lecture["start"][:10] == self._now.date().isoformat():
-                                if "id" and "meta" in lecture:
-                                    lecture.pop("id")
-                                    lecture.pop("meta")
-                            # data["title"] = lecture["title"]
-                            # data["start"] = lecture["start"]
-                            # data["end"] = lecture["end"]
-                            # data["duration"] = lecture["duration"]
-                            # data["location"] = lecture["location"]
-                                data.append(lecture)
+            # session = async_get_clientsession(self._hass)
+            async with self._session.get(url, timeout=30) as response:
+                response.raise_for_status()
+                _LOGGER.debug("Got response [%s] for URL: %s", response.status, url)
+                resp = await response.json()
+                resp = resp["events"]
+                if resp:
+                    _LOGGER.debug("Found lecture")
+                    for lecture in resp:
+                        # only scrap todays lectures
+                        if (
+                            lecture["start"][:10]
+                            == (self._now.date() + TIME_SHIFT).isoformat()
+                        ):
+                            if "id" and "meta" and "duration" in lecture:
+                                lecture.pop("id")
+                                lecture.pop("duration")
+                                lecture.pop("meta")
+                            data.append(lecture)
         except (
             aiohttp.ClientError,
             aiohttp.http_exceptions.HttpProcessingError,
-        ) as e:
-            logger.error(
+        ) as aio_exceptions:
+            _LOGGER.debug(
                 "aiohttp exception for %s [%s]: %s",
                 url,
-                getattr(e, "status", None),
-                getattr(e, "message", None),
+                getattr(aio_exceptions, "status", None),
+                getattr(aio_exceptions, "message", None),
             )
-        except Exception as e:
-            # May be raised from other libraries, such as chardet or yarl.
-            # logger.exception will show the full traceback.
-            logger.exception(
-                "Non-aiohttp exception occured:  %s", getattr(
-                    e, "__dict__", {})
-            )
-        logger.info("Found lecture") if resp else logger.info(
-            "not Found lecture")
+        except Exception as other_exceptions:
+            _LOGGER.exception("Non-aiohttp exception %s occured", other_exceptions)
+
         return data
 
     async def full_request(self):
+        """processing todays all classroom infomation"""
         tasks = []
-        week = self.weekInfo()
+        week = self.week_info()
         urls = []
         for plan in STUDEN_PLAN:
-            urls.append(f'https://spluseins.de/api/splus/{plan}/{week}')
-        with concurrent.futures.ThreadPoolExecutor(max_workers=len(STUDEN_PLAN)) as executor:
-            future_to_url = [executor.submit(
-                self.single_request, url) for url in urls]
+            urls.append(f"{BASE_API_URL}/{plan}/{week}")
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=len(STUDEN_PLAN)
+        ) as executor:
+            future_to_url = [executor.submit(self.single_request, url) for url in urls]
             for future in concurrent.futures.as_completed(future_to_url):
                 try:
                     tasks += await future.result()
-                except Exception as e:
-                    logger.exception(
-                        "exception at full_request occured:  %s", getattr(
-                            e, "__dict__", {})
-                    )
-
-        # for url in urls:
-        #     task += single_request(url)
-        # tasks = await asyncio.gather(*task)
+                except Exception as exceptions:
+                    _LOGGER.debug("exception %s at full_request occured", exceptions)
 
         return [dict(t) for t in {tuple(d.items()) for d in tasks}]
 
-    async def reorder_as_location(self,):
+    async def reorder_as_location(self):
+        """reorder the infomation to classroom order"""
         from copy import deepcopy
-        classroom = []
+        room = []
         semester = await self.full_request()
         for lecture in semester:
-            for lo in lecture["location"].split(','):
+            for lo in lecture["location"].split(","):
                 dummy_lec = deepcopy(lecture)
                 # HS A, P6, P7 has space after comma
                 dummy_lec["location"] = lo.lstrip()
-                classroom.append(dummy_lec)
-        return sorted(classroom, key=lambda tasks: (tasks['location'], tasks['start']))
+                room.append(dummy_lec)
+        return sorted(room, key=lambda tasks: (tasks["location"], tasks["start"]))
 
     async def write_local(self, file):
+        """save the timetable"""
         res = await self.reorder_as_location()
         async with aiofiles.open(file, "w+") as f:
             await f.write(json.dumps(res, indent=4))
             await f.flush()
-        logger.info("Wrote results in %s", self._now.date())
+        _LOGGER.debug("Wrote results in %s", self._now.date())
 
     async def lookup_location(self, lo):
-        '''
-        default update all
-        '''
+        """default update all"""
         import os
-        files = f"room/roomplan_{self._now.date()}.json"
+        # todo test only
+        # paths = f"{os.path.abspath(os.curdir)}/custom_components/scheduletracker/room"
+        paths = f"{os.path.abspath(os.curdir)}/homeassistant/components/scheduletracker/room"
+        # if not os.path.exists(paths):
+        #     os.makedirs(paths)
+        files = f"{paths}/roomplan_{self._now.date()}.json"
         if not os.path.isfile(files):
             await self.write_local(file=files)
 
         try:
-            with open(files, "r") as f:
-                classroom = json.loads(f.read())
+            with open(files, "r", encoding="utf-8") as f:
+                room = json.loads(f.read())
             if not lo:
-                logger.info("Daily update at %s", self._now.date())
-                return classroom
+                _LOGGER.debug("Daily update at %s", self._now.date())
+                return room
             res = []
-            for lecture in classroom:
+            for lecture in room:
                 if lecture["location"] == lo:
                     res.append(lecture)
                 elif res:
-                    # if lecture["location"] != lo and res:
-                    logger.info("lookup location %s at %s",
-                                lo, self._now.date())
+                    _LOGGER.debug("lookup location %s at %s", lo, self._now.date())
                     return res
-            logger.info("{0} infos at location {1} in {2} find".format(
-                        len(res),lo, self._now.date()))
+            _LOGGER.debug(
+                "%s infos at location %s in %s find", len(res), lo, self._now.date()
+            )
             return res
 
-        except IOError as e:
-            logger.exception(
-                "I/O error({0}): {1}".format(e.errno, e.strerror)
-            )
-        except Exception as e:
-            logger.exception(
-                "Unexpected error opening {fname} is", getattr(
-                    e, "__dict__", {})
-            )
+        except json.decoder.JSONDecodeError:  # today has no lecture
+            return []
+        except IOError as io_error:
+            _LOGGER.debug("I/O error %s): %s", io_error.errno, io_error.strerror)
+        except Exception as exceptions:
+            _LOGGER.debug("Unexpected error %s", exceptions)
 
 
-if __name__ == "__main__":
-    import dateutil.parser
-    time = '2022-12-23T10:00:00.000Z'
-    now = dateutil.parser.parse(time)
-    loop = asyncio.get_event_loop()
-    future = asyncio.ensure_future(Scrap(now).lookup_location("Online"))
-    loop.run_until_complete(future)
+class ClassroomData:
+    """each classroom has one dataclass,
+    get the current location information
+    """
+
+    def __init__(self, session, location, time_interval):
+        self._lo = location
+        # WARN test only
+        self._now = dateutil.parser.parse(t)
+        # self._now = None
+        self._session = session
+        self._lect = {
+            "title": 0,
+            "start": None,
+            "end": None,
+        }
+        self._next_lect = {
+            "title": 0,
+            "start": None,
+            "end": None,
+        }
+        self._free = False
+        self._update_time = -1  # see async_update_lect
+        self._time_interval = time_interval  # only refresh/update rest_time
+
+    @property
+    def locations(self):
+        """roomName"""
+        return self._lo
+
+    @property
+    def now_time(self):
+        """current time"""
+        return self._now
+
+    @property
+    def curr_lecture(self):
+        """current lecture"""
+        return self._lect["title"]
+
+    @property
+    def curr_info(self):
+        """information about current lecture"""
+        return (
+            {
+                "start": self._lect["start"].strftime("%H:%M"),
+                "end": self._lect["end"].strftime("%H:%M"),
+            }
+            if self.curr_lecture
+            else None
+        )
+
+    @curr_info.setter
+    def curr_info(self, lecture: dict):
+        """set current lecture"""
+        self._lect = {
+            "title": lecture["title"],
+            "start": lecture["start"],
+            "end": lecture["end"],
+        }
+
+    def _clear_curr_lect(self):
+        """clear current lecture"""
+        self._lect = {
+            "title": None,
+            "start": None,
+            "end": None,
+        }
+
+    @property
+    def next_lecture(self):
+        """next lecture"""
+        return self._next_lect["title"]
+
+    @property
+    def next_info(self):
+        """information about next lecture"""
+        return (
+            {
+                "start": self._next_lect["start"].strftime("%H:%M"),
+                "end": self._next_lect["end"].strftime("%H:%M"),
+            }
+            if self.next_lecture
+            else None
+        )
+
+    @next_info.setter
+    def next_info(self, lecture: dict):
+        """set next lecture"""
+        self._next_lect = {
+            "title": lecture["title"],
+            "start": lecture["start"],
+            "end": lecture["end"],
+        }
+
+    def _clear_next_lect(self):
+        """clear current lecture"""
+        self._next_lect = {
+            "title": None,
+            "start": None,
+            "end": None,
+        }
+
+    @property
+    def is_free(self):
+        """classroom busy"""
+        return self._free
+
+    @property
+    def rest_time(self):
+        """rest time current lecture"""
+        if self._lect["end"]:
+            return self._time_format(self._lect["end"])
+
+    @property
+    def begin_time(self):
+        """rest time to next lecture"""
+        if self._next_lect["start"]:
+            return self._time_format(self._next_lect["start"])
+
+    def update_time(self):
+        """force update lecture"""
+        if self._update_time - self._time_interval <= 0:
+            if self.curr_lecture:
+                self._update_time = self.rest_time
+            elif self.next_lecture:
+                self._update_time = self.begin_time
+        else:
+            self._update_time -= self._time_interval
+        return self._update_time
+
+    # REVIEW timeinterval
+    async def async_update(self):
+        """update the infomation in time_interval"""
+        self._now += datetime.timedelta(minutes=self._time_interval)
+        # time here means current time
+        # if any lecture has been scheduled
+        # then not need to update the whole lecture, rather the rest of both time
+        if self.curr_lecture is None and self.next_lecture is None:
+            return  # now has no lecture LOCk
+        if self._update_time - self._time_interval <= 0:
+            await self.async_update_lect()
+        await self.async_update_rest()
+
+    async def async_update_rest(self):
+        """only update the rest_time and begin_time"""
+        _LOGGER.debug("Update from %s", self._now)
+        self.update_time()
+        return [self.rest_time, self.begin_time]
+
+    async def async_update_lect(self):
+        """update the lecture infomation"""
+        # update_time == 0, update the timetable/lect, otherwise will only update rest_time
+        _LOGGER.debug("Update from %s", self._now)
+        location_plan = await Scrap(
+            now=self._now, session=self._session, location=self._lo
+        ).lookup_location(self._lo)
+
+        def positing():
+            cur = None
+            nex = None
+            for i, lecture in enumerate(location_plan):
+                lecture["start"] = self._time_convert(lecture["start"])
+                lecture["end"] = self._time_convert(lecture["end"])
+                if self._now < lecture["end"]:  # has lecture
+                    if self._now >= lecture["start"]:
+                        # find current
+                        cur = lecture
+                        try:
+                            nex = location_plan[i + 1]
+                            nex["start"] = self._time_convert(nex["start"])
+                            nex["end"] = self._time_convert(nex["end"])
+                        except IndexError:
+                            # current is the last
+                            break
+                    else:  # current is none
+                        nex = location_plan[i]
+                    break
+            return [cur, nex]
+
+        lecture = positing()
+        # current has lesson
+        if lecture[0]:
+            self.curr_info = lecture[0]
+            self._free = False
+        else:  # current dont have
+            self._clear_curr_lect()
+            self._free = True
+        # next has lesson
+        if lecture[1]:
+            self.next_info = lecture[1]
+        # next dont have
+        else:
+            self._clear_next_lect()
+        return [self.curr_info, self.next_info]
+
+    # data processing help functions
+    def _time_convert(self, time: str) -> datetime:
+        """change the starttime format only
+        2022-12-19T09:00:00.000Z -> 2022-12-19 09:00:00+00.00
+        """
+        return dateutil.parser.isoparse(time)
+
+    def _time_format(self, date_time):
+        delta = abs(self._now - date_time)
+        return round(delta.total_seconds() / 60, 3)  # rest_time in minute
