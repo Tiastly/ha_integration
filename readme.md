@@ -1,6 +1,42 @@
-# TimeTable Grabber
-scrapped the timetable from electronic faculty ostfalia (spuls API)
-
-because the api was semester based, so in avoid of too many requests every day this program will only refresh one time every day in order to keep the latest timetable. and other requests will only be looked up locally. the newest information every day will be found in files `room\\roomplan-{date}.json`
+# ePlateController
 
 **StudienArbeit**
+
+# 🚧still in working🚧
+
+this is a Homeassistant integration, combine with an esp32 and Display to use (where is it, idk😴), so we could say, this part is an information-gather and publisher (MQTT)
+
+the information consist of 3 parts, 
+- **lecture information**: the Schedule table from electronic faculty ostfalia (SpulseEins API)
+> because the api was semester based, so in avoid of too many requests every day this program will only refresh one time every day in order to keep the latest timetable. and other requests will only be looked up locally. the newest information every day will be found in files `room\\roomplan-{date}.json`
+- partly **text descriptions**
+user input
+- more text in office-mode [in progress]
+- sensors
+user select, must first be added in Homeassistant
+
+# todo
+
+- [ ] text in office-mode struct
+- [ ] add device manually (?)
+- [ ] test files
+
+~~Studienarbeit verfassen~~
+
+
+# Usage
+- download and put it in your `custom-component` files
+- check your MQTT-Broker is running
+- restart the Homeassistant to load this
+- find where is the Hardware part, and run it
+- ~~be a Mitarbeiter von Elektrotechnik Fakultät der Ostfalia~~ 
+- enjoy
+
+# Features
+- MQTT-Discovery
+- Integration UI supported
+- classroom and office mode supported
+- useless (so far)
+
+> thx all the other developers, that give me a lot of references, truly
+> ---from a noob🥰

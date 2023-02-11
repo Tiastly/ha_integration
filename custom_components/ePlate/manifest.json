@@ -1,0 +1,12 @@
+{
+  "domain": "ePlate",
+  "name": "ePlateController",
+  "version":"0.0.2",
+  "config_flow": true,
+  "documentation": "https://github.com/Tiastly/ha_integration",
+  "requirements": [],
+  "dependencies": ["mqtt"],
+  "mqtt": ["/ePlate/init/devices/#"],
+  "codeowners": ["@tiastly"],
+  "iot_class": "local_push"
+}

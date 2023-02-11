@@ -2,24 +2,23 @@
 from __future__ import annotations
 import datetime
 
-# from datetime import date
-
 import json
 import logging
 import aiohttp
 import aiofiles
 import dateutil.parser
 import concurrent.futures
-
+from datetime import timedelta, timezone
+import homeassistant.util.dt as dt_util
 # from homeassistant.core import HomeAssistant
 # from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 # from homeassistant.util.dt import now
 
 from .studenplan import STUDEN_PLAN
-from .const import TIME_SHIFT, t, BASE_API_URL
+from .const import TIME_SHIFT, t, BASE_API_URL, TIME_SHIFT
 
-_LOGGER = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 #  today's all timetable
 
@@ -46,11 +45,11 @@ class Scrap:
             # session = async_get_clientsession(self._hass)
             async with self._session.get(url, timeout=30) as response:
                 response.raise_for_status()
-                _LOGGER.debug("Got response [%s] for URL: %s", response.status, url)
+                _logger.debug("Got response [%s] for URL: %s", response.status, url)
                 resp = await response.json()
                 resp = resp["events"]
                 if resp:
-                    _LOGGER.debug("Found lecture")
+                    _logger.debug("Found lecture")
                     for lecture in resp:
                         # only scrap todays lectures
                         if (
@@ -66,14 +65,14 @@ class Scrap:
             aiohttp.ClientError,
             aiohttp.http_exceptions.HttpProcessingError,
         ) as aio_exceptions:
-            _LOGGER.debug(
+            _logger.debug(
                 "aiohttp exception for %s [%s]: %s",
                 url,
                 getattr(aio_exceptions, "status", None),
                 getattr(aio_exceptions, "message", None),
             )
         except Exception as other_exceptions:
-            _LOGGER.exception("Non-aiohttp exception %s occured", other_exceptions)
+            _logger.exception("Non-aiohttp exception %s occured", other_exceptions)
 
         return data
 
@@ -92,7 +91,7 @@ class Scrap:
                 try:
                     tasks += await future.result()
                 except Exception as exceptions:
-                    _LOGGER.debug("exception %s at full_request occured", exceptions)
+                    _logger.debug("exception %s at full_request occured", exceptions)
 
         return [dict(t) for t in {tuple(d.items()) for d in tasks}]
 
@@ -115,7 +114,7 @@ class Scrap:
         async with aiofiles.open(file, "w+") as f:
             await f.write(json.dumps(res, indent=4))
             await f.flush()
-        _LOGGER.debug("Wrote results in %s", self._now.date())
+        _logger.debug("Wrote results in %s", self._now.date())
 
     async def lookup_location(self, lo):
         """default update all"""
@@ -123,8 +122,8 @@ class Scrap:
         # todo test only
         # paths = f"{os.path.abspath(os.curdir)}/custom_components/scheduletracker/room"
         paths = f"{os.path.abspath(os.curdir)}/homeassistant/components/scheduletracker/room"
-        # if not os.path.exists(paths):
-        #     os.makedirs(paths)
+        if not os.path.exists(paths):
+            os.makedirs(paths)
         files = f"{paths}/roomplan_{self._now.date()}.json"
         if not os.path.isfile(files):
             await self.write_local(file=files)
@@ -133,16 +132,16 @@ class Scrap:
             with open(files, "r", encoding="utf-8") as f:
                 room = json.loads(f.read())
             if not lo:
-                _LOGGER.debug("Daily update at %s", self._now.date())
+                _logger.debug("Daily update at %s", self._now.date())
                 return room
             res = []
             for lecture in room:
                 if lecture["location"] == lo:
                     res.append(lecture)
                 elif res:
-                    _LOGGER.debug("lookup location %s at %s", lo, self._now.date())
+                    _logger.debug("lookup location %s at %s", lo, self._now.date())
                     return res
-            _LOGGER.debug(
+            _logger.debug(
                 "%s infos at location %s in %s find", len(res), lo, self._now.date()
             )
             return res
@@ -150,9 +149,9 @@ class Scrap:
         except json.decoder.JSONDecodeError:  # today has no lecture
             return []
         except IOError as io_error:
-            _LOGGER.debug("I/O error %s): %s", io_error.errno, io_error.strerror)
+            _logger.debug("I/O error %s): %s", io_error.errno, io_error.strerror)
         except Exception as exceptions:
-            _LOGGER.debug("Unexpected error %s", exceptions)
+            _logger.debug("Unexpected error %s", exceptions)
 
 
 class ClassroomData:
@@ -179,6 +178,11 @@ class ClassroomData:
         self._free = False
         self._update_time = -1  # see async_update_lect
         self._time_interval = time_interval  # only refresh/update rest_time
+
+    @property
+    def now(self):
+        """current time"""
+        return dt_util.now(timezone(offset=TIME_SHIFT))
 
     @property
     def locations(self):
@@ -286,7 +290,6 @@ class ClassroomData:
             self._update_time -= self._time_interval
         return self._update_time
 
-    # REVIEW timeinterval
     async def async_update(self):
         """update the infomation in time_interval"""
         self._now += datetime.timedelta(minutes=self._time_interval)
@@ -301,14 +304,14 @@ class ClassroomData:
 
     async def async_update_rest(self):
         """only update the rest_time and begin_time"""
-        _LOGGER.debug("Update from %s", self._now)
+        _logger.debug("Update from %s", self._now)
         self.update_time()
         return [self.rest_time, self.begin_time]
 
     async def async_update_lect(self):
         """update the lecture infomation"""
         # update_time == 0, update the timetable/lect, otherwise will only update rest_time
-        _LOGGER.debug("Update from %s", self._now)
+        _logger.debug("Update from %s", self._now)
         location_plan = await Scrap(
             now=self._now, session=self._session, location=self._lo
         ).lookup_location(self._lo)
@@ -335,17 +338,17 @@ class ClassroomData:
                     break
             return [cur, nex]
 
-        lecture = positing()
+        cur, nex = positing()
         # current has lesson
-        if lecture[0]:
-            self.curr_info = lecture[0]
+        if cur:
+            self.curr_info = cur
             self._free = False
         else:  # current dont have
             self._clear_curr_lect()
             self._free = True
         # next has lesson
-        if lecture[1]:
-            self.next_info = lecture[1]
+        if nex:
+            self.next_info = nex
         # next dont have
         else:
             self._clear_next_lect()
