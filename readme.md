@@ -7,19 +7,19 @@
 this is a Homeassistant integration, combine with an esp32 and Display to use (where is it, idk😴), so we could say, this part is an information-gather and publisher (MQTT)
 
 the information consist of 3 parts, 
-- **lecture information**: the Schedule table from electronic faculty ostfalia (SpulseEins API)
+- **lecture information**: the Schedule table from electronic faculty Ostfalia (SpulseEins API)
 > because the api was semester based, so in avoid of too many requests every day this program will only refresh one time every day in order to keep the latest timetable. and other requests will only be looked up locally. the newest information every day will be found in files `room\\roomplan-{date}.json`
-- partly **text descriptions**
+- partly **text descriptions** or url
 user input
-- more text in office-mode [in progress]
-- sensors
+- more **text** in office-mode [in progress]
+- **sensors**
 user select, must first be added in Homeassistant
 
 # todo
 
-- [ ] text in office-mode struct
+- [x] multy device(at least its running)
 - [ ] add device manually (?)
-- [ ] test files
+- [ ] ~~test files~~
 
 ~~Studienarbeit verfassen~~
 

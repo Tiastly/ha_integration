@@ -29,6 +29,7 @@ from .const import (
 
 _logger = logging.getLogger(__name__)
 
+PLATFORMS: list[Platform] = [Platform.TEXT]
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up from yaml."""
@@ -41,7 +42,8 @@ async def load_first_info(hass: HomeAssistant, entry: ConfigEntry):
     device_registry = dr.async_get(hass)
     hass.data[DOMAIN][entry.entry_id]["device"] = device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
-        identifiers={(DOMAIN, entry.unique_id)},  # NOT CHANGE!
+        identifiers={(DOMAIN, entry.data["device"]["identifiers"])},  # NOT CHANGE!
+        #identifiers={(DOMAIN, str(entry.unique_id)+"_"+entry.data["device"]["identifiers"])},
         name=entry.data["config"][ATTR_ROOM_ID],  # roomNr
         manufacturer=entry.data["device"]["manufacturer"],
         model=entry.data["device"]["model"],
@@ -77,14 +79,14 @@ async def load_first_info(hass: HomeAssistant, entry: ConfigEntry):
     )
     # init topic publish
     await once_mqtt_publish(hass, entry, "init")
-    # prepare for next publish
-    change_publish_interval(
-        hass, entry, timedelta(minutes=entry.data["config"]["delay"])
-    )
 
     # create entity
     if entry.data["config"][ATTR_ROOM_TYPE] == 0:  # classroom
         _logger.debug("loading class device %s", device_registry)
+        PLATFORMS.append(Platform.SENSOR)
+        change_publish_interval(
+            hass, entry, timedelta(minutes=entry.data["config"]["delay"])
+        )# only classroom need routine publish
     else:  # office
         _logger.debug("loading office device %s", device_registry)
         hass.data[DOMAIN][entry.entry_id]["topic"]["room"] = PATTERN_MEMBER.format(
@@ -129,7 +131,8 @@ async def options_listener(hass: HomeAssistant, entry: ConfigEntry):
     if delay:
         _logger.debug("delay changed to %s", delay)
         data_package["payload"]["delay"] = delay
-        hass.data[DOMAIN][entry.entry_id]["services"]["timmer"]()
+        if hass.data[DOMAIN][entry.entry_id]["services"].get("timmer",None):
+            hass.data[DOMAIN][entry.entry_id]["services"]["timmer"]()
         await once_mqtt_publish(hass=hass, entry=entry, topic_id="delay")
         change_publish_interval(
             hass=hass, entry=entry, time_interval=timedelta(minutes=delay)
@@ -156,7 +159,7 @@ def change_publish_interval(
                     sensor
                 ).state
 
-        if data_package["init"][ATTR_ROOM_TYPE] == 0:  # classroom
+        if data_package["payload"]["init"][ATTR_ROOM_TYPE] == 0:  # classroom
             await once_mqtt_publish(hass, entry, "room")
         if data_package["payload"]["sensor"]:
             data_package["payload"]["sensor"] = await get_sensor_data(data_package)
@@ -192,16 +195,19 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
+    try:
+        unload_ok = await hass.config_entries.async_unload_platforms(
+            entry, PLATFORMS
+        )
+        # Remove all services.
+        for service in hass.data[DOMAIN][entry.entry_id]["services"].values():
+            service()
 
-    unload_ok = await hass.config_entries.async_unload_platforms(
-        entry, [Platform.TEXT, Platform.SENSOR]
-    )
-    # Remove all services.
-    for service in hass.data[DOMAIN][entry.entry_id]["services"].values():
-        service()
+        if unload_ok:
+            hass.data[DOMAIN].pop(entry.entry_id)
 
-    if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id)
+    except ValueError:
+        pass
 
     device_registry = dr.async_get(hass)
     device = device_registry.async_get_device(

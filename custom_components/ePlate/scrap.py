@@ -119,9 +119,9 @@ class Scrap:
     async def lookup_location(self, lo):
         """default update all"""
         import os
-        # todo test only
-        # paths = f"{os.path.abspath(os.curdir)}/custom_components/scheduletracker/room"
-        paths = f"{os.path.abspath(os.curdir)}/homeassistant/components/scheduletracker/room"
+        paths = f"{os.path.abspath(os.curdir)}/custom_components/ePlate/room"
+        # # test only
+        # paths = f"{os.path.abspath(os.curdir)}/homeassistant/components/scheduletracker/room"
         if not os.path.exists(paths):
             os.makedirs(paths)
         files = f"{paths}/roomplan_{self._now.date()}.json"

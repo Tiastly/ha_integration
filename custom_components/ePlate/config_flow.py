@@ -38,8 +38,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_mqtt(self, discovery_info: MqttServiceInfo) -> FlowResult:
         """Handle a flow initialized by MQTT discovery."""
-        if self._async_in_progress() or self._async_current_entries():
-            return self.async_abort(reason="single_instance_allowed")
+        # if self._async_in_progress() or self._async_current_entries():
+        #     return self.async_abort(reason="single_instance_allowed")
 
         payload = json.loads(discovery_info.payload)
         self._data["unique_id"] = payload["unique_id"]

@@ -4,6 +4,7 @@ from datetime import timedelta
 t = "2022-12-22T6:57:00.000Z"  # basic_time only for test
 
 DOMAIN ="ePlate"
+# DOMAIN = "scheduletracker"
 TIME_SHIFT = timedelta(hours=1)
 BASE_API_URL = "https://spluseins.de/api/splus"
 
@@ -21,6 +22,7 @@ ATTR_DELAY = "delay"
 ATTR_DELAY_MIN = 1
 ATTR_DELAY_MAX = 30
 ATTR_SENSOR_MAX = 3
+ATTR_MEMBER_MAX = 3
 # class
 ATTR_LECT = "lectures"
 ATTR_INFO = "lect_info"
@@ -63,9 +65,9 @@ PATTERN_INIT_PAYLOAD = {  # from init
 PATTERN_DELAY_PAYLOAD = {
     ATTR_DELAY: int,
 }
-PATTERN_BASE_PAYLOAD = {
-    ATTR_DIS: str,
-    ATTR_QR: str,
+PATTERN_BASE_PAYLOAD = {#str
+    ATTR_DIS: "",
+    ATTR_QR: "",
     # ATTR_DELAY: str,
 }
 PATTERN_PLAN_SUB_PAYLOAD = {
@@ -93,24 +95,24 @@ PLAN_PAYLOAD = {
 #     ATTR_MAIL: str,
 #     ATTR_MSG: str,
 # }
-PATTERN_MEMBER_PAYLOAD = {
+PATTERN_MEMBER_PAYLOAD = {#str
     "member1": {
-        ATTR_NAME: str,
-        ATTR_TEL: str,
-        ATTR_MAIL: str,
-        ATTR_MSG: str,
+        ATTR_NAME: "",
+        ATTR_TEL: "",
+        ATTR_MAIL: "",
+        ATTR_MSG: "",
     },
     "member2": {
-        ATTR_NAME: str,
-        ATTR_TEL: str,
-        ATTR_MAIL: str,
-        ATTR_MSG: str,
+        ATTR_NAME: "",
+        ATTR_TEL: "",
+        ATTR_MAIL: "",
+        ATTR_MSG: "",
     },
     "member3": {
-        ATTR_NAME: str,
-        ATTR_TEL: str,
-        ATTR_MAIL: str,
-        ATTR_MSG: str,
+        ATTR_NAME: "",
+        ATTR_TEL: "",
+        ATTR_MAIL: "",
+        ATTR_MSG: "",
     },
 }
 # max 3 sensors
