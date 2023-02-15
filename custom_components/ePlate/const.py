@@ -1,7 +1,7 @@
 """Constants for the ePlate integration."""
 from datetime import timedelta
 
-t = "2022-12-22T6:57:00.000Z"  # basic_time only for test
+t = "2022-12-23T6:57:00.000Z"  # basic_time only for test
 
 DOMAIN ="ePlate"
 # DOMAIN = "scheduletracker"
@@ -11,14 +11,15 @@ BASE_API_URL = "https://spluseins.de/api/splus"
 # types
 LECT_TYPE = {0: "current", 1: "next"}
 ROOM_TYPE = {0: "classroom type", 1: "office type"}
-
+CMD_TYPE = {0:"refresh immediately",1:"clear all",2:"reset the display"}
 
 # attributes
-ATTR_ROOM_ID = "room_id"
-ATTR_ROOM_TYPE = "room_type"
-ATTR_QR = "room_qr-code"
-ATTR_DIS = "room_description"
+ATTR_ROOM_ID = "roomID"
+ATTR_ROOM_TYPE = "roomType"
+ATTR_QR = "roomQRCode"
+ATTR_DIS = "roomDescribtion"
 ATTR_DELAY = "delay"
+ATTR_CMD = "command"
 ATTR_DELAY_MIN = 1
 ATTR_DELAY_MAX = 30
 ATTR_SENSOR_MAX = 3
@@ -52,13 +53,17 @@ TOPIC_ID = ["init", "delay", "base", "room", "sensor"]
 PATTERN_INIT = "/ePlate/{unique_id}/init/"
 PATTERN_DELAY = "/ePlate/{roomID}/refreshTime"
 PATTERN_BASE = "/ePlate/{roomID}/baseInfo"
-PATTERN_PLAN = "/ePlate/{roomID}/planung"
+PATTERN_CMD_FRESH = "/ePlate/{roomID}/refresh"
+PATTERN_CMD_CLEAR = "/ePlate/{roomID}/clear"
+PATTERN_CMD_RESET = "/ePlate/{roomID}/factoryReset"
+PATTERN_CMD = [PATTERN_CMD_FRESH,PATTERN_CMD_CLEAR,PATTERN_CMD_RESET]
+PATTERN_PLAN = "/ePlate/{roomID}/plannung"
 PATTERN_MEMBER = "/ePlate/{roomID}/member"
 PATTERN_SENSOR = "/ePlate/{roomID}/sensor"
 # payload-patterns
 PATTERN_INIT_PAYLOAD = {  # from init
-    ATTR_ROOM_ID: str,
-    ATTR_ROOM_TYPE: ROOM_TYPE,
+    ATTR_ROOM_ID:str,
+    ATTR_ROOM_TYPE:ROOM_TYPE,
     ATTR_DELAY: int,
 }
 # only numbers
@@ -68,12 +73,11 @@ PATTERN_DELAY_PAYLOAD = {
 PATTERN_BASE_PAYLOAD = {#str
     ATTR_DIS: "",
     ATTR_QR: "",
-    # ATTR_DELAY: str,
 }
 PATTERN_PLAN_SUB_PAYLOAD = {
-    ATTR_LECT: str,
-    ATTR_INFO: str,
-    ATTR_TIME: str,
+    ATTR_LECT: None,
+    ATTR_INFO:None,
+    ATTR_TIME: None,
 }
 PATTERN_PLAN_PAYLOAD = {
     LECT_TYPE[0]: PATTERN_PLAN_SUB_PAYLOAD ,
@@ -81,12 +85,12 @@ PATTERN_PLAN_PAYLOAD = {
 }
 # i don like this:(
 PLAN_PAYLOAD = {
-    "classNow": str,
-    "classNowRemainTime": int,
-    "classNext": str,
-    "classNextWaitTime": int,
-    "classNextStartTime": str,
-    "classNextEndTime": str,
+    "classNow":None,
+    "classNowRemainTime": None,
+    "classNext": None,
+    "classNextWaitTime": None,
+    "classNextStartTime": None,
+    "classNextEndTime": None,
 }
 # max 3 menbers
 # PATTERN_MEMBER = {
@@ -119,15 +123,15 @@ PATTERN_MEMBER_PAYLOAD = {#str
 PATTERN_SENSOR_PAYLOAD = {ATTR_SENSOR: ATTR_SENSOR_INFO}
 SENSOR_PAYLOAD = {
     "sensor1": {
-        ATTR_SENSOR: str,
-        ATTR_SENSOR_INFO: str,
+        ATTR_SENSOR: None,
+        ATTR_SENSOR_INFO: None,
     },
     "sensor2": {
-        ATTR_SENSOR: str,
-        ATTR_SENSOR_INFO: str,
+        ATTR_SENSOR: None,
+        ATTR_SENSOR_INFO: None,
     },
     "sensor3": {
-        ATTR_SENSOR: str,
-        ATTR_SENSOR_INFO: str,
+        ATTR_SENSOR: None,
+        ATTR_SENSOR_INFO: None,
     },
 }

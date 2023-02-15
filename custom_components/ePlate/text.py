@@ -132,13 +132,12 @@ class BasicInfoText(InfoText):
 
     async def async_set_value(self, value: str) -> None:
         # when the value changed, make the mqtt publish
-        if self._info_type == ATTR_QR and not re.match(
-            pattern="[a-zA-z]+://[^\s]*", string=value
-        ):
-            raise ValueError("invalid url")
+        #if self._info_type == ATTR_QR and not re.match(
+         #   pattern="[a-zA-z]+://[^\s]*", string=value
+        #):
+         #   raise ValueError("invalid url")
 
         self._data_package["payload"]["base"][self._info_type] = value
-
         try:
             await mqtt.async_publish(
                 hass=self._hass,
@@ -158,7 +157,6 @@ class MemberInfoText(InfoText):
         """Initialize the text."""
         super().__init__(hass, device, info_type, data_package)
         self._member_bit = member_bit
-        # self._attr_name = f"{self._device.name}_{self._member_bit}_{self._info_type}"
 
     @property
     def name(self) -> str:
@@ -181,7 +179,7 @@ class MemberInfoText(InfoText):
                 topic=self._data_package["topic"]["room"],
                 payload=self._data_package["payload"]["room"],
                 qos=0,
-                retain=False,
+                retain=True,
             )
         except Exception as err:
             _logger.error(err)

@@ -127,7 +127,6 @@ class Scrap:
         files = f"{paths}/roomplan_{self._now.date()}.json"
         if not os.path.isfile(files):
             await self.write_local(file=files)
-
         try:
             with open(files, "r", encoding="utf-8") as f:
                 room = json.loads(f.read())
@@ -135,6 +134,7 @@ class Scrap:
                 _logger.debug("Daily update at %s", self._now.date())
                 return room
             res = []
+
             for lecture in room:
                 if lecture["location"] == lo:
                     res.append(lecture)
@@ -147,6 +147,7 @@ class Scrap:
             return res
 
         except json.decoder.JSONDecodeError:  # today has no lecture
+            _logger.debug("today lecture")
             return []
         except IOError as io_error:
             _logger.debug("I/O error %s): %s", io_error.errno, io_error.strerror)
@@ -182,7 +183,8 @@ class ClassroomData:
     @property
     def now(self):
         """current time"""
-        return dt_util.now(timezone(offset=TIME_SHIFT))
+        # return dt_util.now(timezone(offset=TIME_SHIFT))
+        return self._now
 
     @property
     def locations(self):
@@ -293,6 +295,7 @@ class ClassroomData:
     async def async_update(self):
         """update the infomation in time_interval"""
         self._now += datetime.timedelta(minutes=self._time_interval)
+        _logger.debug("now:%s,curr:%s,next%s",self._now,self.curr_lecture,self._next_lect)
         # time here means current time
         # if any lecture has been scheduled
         # then not need to update the whole lecture, rather the rest of both time
@@ -304,18 +307,18 @@ class ClassroomData:
 
     async def async_update_rest(self):
         """only update the rest_time and begin_time"""
-        _logger.debug("Update from %s", self._now)
+        _logger.debug("Update from rest%s", self._now)
         self.update_time()
         return [self.rest_time, self.begin_time]
 
     async def async_update_lect(self):
         """update the lecture infomation"""
         # update_time == 0, update the timetable/lect, otherwise will only update rest_time
-        _logger.debug("Update from %s", self._now)
+        _logger.debug("Update from lect%s,location%s", self._now,self._lo)
+        
         location_plan = await Scrap(
             now=self._now, session=self._session, location=self._lo
         ).lookup_location(self._lo)
-
         def positing():
             cur = None
             nex = None
@@ -337,7 +340,7 @@ class ClassroomData:
                         nex = location_plan[i]
                     break
             return [cur, nex]
-
+            
         cur, nex = positing()
         # current has lesson
         if cur:

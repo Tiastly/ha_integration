@@ -39,23 +39,23 @@ async def async_setup_entry(
     if device is None:
         return False
     session = async_get_clientsession(hass)
-    async_add_entities(
-        [
-            LectureEntity(
+    classroom = ClassroomData(
+        session=session,
+        location=device.name,
+        time_interval=delay,
+    )
+    lectures = [LectureEntity(
                 hass=hass,
-                classroom=ClassroomData(
-                    session=session,
-                    location=device.name,
-                    time_interval=delay,
-                ),
+                classroom=classroom,
                 lect_type=lect,
                 time_interval=timedelta(minutes=delay),
                 device=device,
                 data_package=data_package,
-            )
-            for lect in LECT_TYPE
-        ]
-    )
+                )
+                for lect in LECT_TYPE]
+    for lect in lectures:
+        await lect.async_update_lect()
+    async_add_entities(lectures)
     _logger.debug("init sensor finished")
     return True
 
@@ -112,14 +112,17 @@ class LectureEntity(Entity):
     async def async_update_lect(self) -> None:
         """update the sensor infomations"""
         await self._data.async_update()
-        self._state = dt_util.now(timezone(offset=TIME_SHIFT)).strftime("%Y-%m-%d %H:%M:%S")
+        self._state = dt_util.now(
+            timezone(offset=TIME_SHIFT)).strftime("%Y-%m-%d %H:%M:%S")
         # self._state = self._data.now_time#update time
-        self._attrs[ATTR_LECT] = self._data.next_lecture
-        self._attrs[ATTR_INFO] = self._data.next_info
         if self._lect_type == 0:
             self._attrs[ATTR_TIME] = self._data.rest_time
+            self._attrs[ATTR_LECT] = self._data.curr_lecture
+            self._attrs[ATTR_INFO] = self._data.curr_info
         elif self._lect_type == 1:
             self._attrs[ATTR_TIME] = self._data.begin_time
+            self._attrs[ATTR_LECT] = self._data.next_lecture
+            self._attrs[ATTR_INFO] = self._data.next_info
         self._data_package["payload"]["room"][LECT_TYPE[self._lect_type]] = dict(
             zip(PATTERN_PLAN_SUB_PAYLOAD.keys(), self._attrs.values())
         )

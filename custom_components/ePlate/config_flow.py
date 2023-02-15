@@ -16,6 +16,7 @@ from .roomlist import ROOM_LIST
 from .const import (
     DOMAIN,
     ROOM_TYPE,
+    CMD_TYPE,
     ATTR_DELAY_MIN,
     ATTR_DELAY_MAX,
     ATTR_SENSOR_MAX,
@@ -88,7 +89,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle a flow device settings."""
         errors = {}
         if user_input is not None:
-            _logger.debug(user_input)
             if user_input["roomID"] in ROOM_LIST:
                 self._data["config"] = dict(
                     zip(PATTERN_INIT_PAYLOAD, user_input.values())
@@ -142,9 +142,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 return await self.async_step_update_timedelay()
             if user_input.get("async_step_add_sensors", False):
                 return await self.async_step_add_sensors()
-
+            if user_input.get("async_step_cmd", False):
+                return await self.async_step_cmd()
         fields = {}
         fields[vol.Optional("async_step_update_timedelay")] = bool
+        fields[vol.Optional("async_step_cmd")] = bool
         fields[vol.Optional("async_step_add_sensors")] = bool
         return self.async_show_form(step_id="init", data_schema=vol.Schema(fields))
 
@@ -172,9 +174,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         errors = {}
         # add some regex to filter out other sensors
         for sensor in self.hass.states.async_entity_ids("sensor"):
-            if not re.match(r"sensor\.._(current|next)", sensor):
+            _logger.debug(sensor)
+            if not re.match(pattern = "sensor.*_(current|next)", string = sensor):
                 all_sensors.append(sensor)
         all_sensors.sort()
+        all_sensors.append("delete all sensors")
         if user_input:
             if len(user_input["sensor"]) > ATTR_SENSOR_MAX:
                 errors["base"] = "too_many_sensors"
@@ -189,4 +193,17 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 }
             ),
             errors=errors,
+        )
+
+    async def async_step_cmd(self,user_input = None)->FlowResult:
+        """select cmd"""
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+        return self.async_show_form(
+            step_id="cmd",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("cmd"): vol.In(CMD_TYPE),
+                }
+            )
         )

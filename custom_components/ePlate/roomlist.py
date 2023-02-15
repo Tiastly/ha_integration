@@ -3,6 +3,7 @@
 # https://stundenplan.ostfalia.de/e/raeume/
 # """
 ROOM_LIST = {
+    'Online',
 # # Allgemein
 #     'Aula',
 #     'P1',

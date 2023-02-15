@@ -36,7 +36,8 @@
             "init": {
                 "data": {
                     "async_step_update_timedelay": "change timedelay",
-                    "async_step_add_sensors": "add other sensors"
+                    "async_step_add_sensors": "add other sensors",
+                    "async_step_cmd":"use command topic"
                 },
                 "title": "Would you like to..."
             },
@@ -47,6 +48,10 @@
             "add_sensors":{
                 "title": "Add other sensors",
                 "description": "Select sensors to add to the display,you can maximum add 3 sensors"
+            },
+            "cmd":{
+                "title": "Select command topic",
+                "description": "there are 3 commands, you can only choose one of them"
             }
         }
     }
