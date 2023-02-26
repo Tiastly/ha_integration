@@ -10,13 +10,11 @@ import dateutil.parser
 import concurrent.futures
 from datetime import timedelta, timezone
 import homeassistant.util.dt as dt_util
-# from homeassistant.core import HomeAssistant
-# from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 # from homeassistant.util.dt import now
 
 from .studenplan import STUDEN_PLAN
-from .const import TIME_SHIFT, t, BASE_API_URL, TIME_SHIFT
+from .const import TIME_SHIFT, tTime, BASE_API_URL
 
 _logger = logging.getLogger(__name__)
 
@@ -29,14 +27,13 @@ class Scrap:
     def __init__(self, session, now, location=None):
         self._now = now
         self._session = session
-        self._lo = location
+        # self._lo = location
 
     def week_info(self):
         """week infomation"""
-        # today = self._now.date()
-        # number = today.isocalendar()[1]
-        # return number
-        return 51  # WARN test only
+        today = self._now.date()
+        number = today.isocalendar()[1]
+        return number
 
     async def single_request(self, url: str):
         """processing the single url requst"""
@@ -116,12 +113,12 @@ class Scrap:
             await f.flush()
         _logger.debug("Wrote results in %s", self._now.date())
 
-    async def lookup_location(self, lo):
+    async def lookup_location(self, lo = None):
         """default update all"""
         import os
-        paths = f"{os.path.abspath(os.curdir)}/custom_components/ePlate/room"
+        # paths = f"{os.path.abspath(os.curdir)}/custom_components/ePlate/room"
         # # test only
-        # paths = f"{os.path.abspath(os.curdir)}/homeassistant/components/scheduletracker/room"
+        paths = f"{os.path.abspath(os.curdir)}/homeassistant/components/scheduletracker/room"
         if not os.path.exists(paths):
             os.makedirs(paths)
         files = f"{paths}/roomplan_{self._now.date()}.json"
@@ -147,7 +144,7 @@ class Scrap:
             return res
 
         except json.decoder.JSONDecodeError:  # today has no lecture
-            _logger.debug("today lecture")
+            _logger.debug("%s has no lecture",self._now.date())
             return []
         except IOError as io_error:
             _logger.debug("I/O error %s): %s", io_error.errno, io_error.strerror)
@@ -163,7 +160,7 @@ class ClassroomData:
     def __init__(self, session, location, time_interval):
         self._lo = location
         # WARN test only
-        self._now = dateutil.parser.parse(t)
+        self._now = dateutil.parser.parse(tTime)
         # self._now = None
         self._session = session
         self._lect = {
@@ -315,7 +312,7 @@ class ClassroomData:
         """update the lecture infomation"""
         # update_time == 0, update the timetable/lect, otherwise will only update rest_time
         _logger.debug("Update from lect%s,location%s", self._now,self._lo)
-        
+
         location_plan = await Scrap(
             now=self._now, session=self._session, location=self._lo
         ).lookup_location(self._lo)
@@ -340,7 +337,7 @@ class ClassroomData:
                         nex = location_plan[i]
                     break
             return [cur, nex]
-            
+
         cur, nex = positing()
         # current has lesson
         if cur:
@@ -359,9 +356,7 @@ class ClassroomData:
 
     # data processing help functions
     def _time_convert(self, time: str) -> datetime:
-        """change the starttime format only
-        2022-12-19T09:00:00.000Z -> 2022-12-19 09:00:00+00.00
-        """
+        """change the starttime format only"""
         return dateutil.parser.isoparse(time)
 
     def _time_format(self, date_time):

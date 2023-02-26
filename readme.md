@@ -10,16 +10,26 @@ the information consist of 3 parts,
 - **lecture information**: the Schedule table from electronic faculty Ostfalia (SpulseEins API)
 > because the api was semester based, so in avoid of too many requests every day this program will only refresh one time every day in order to keep the latest timetable. and other requests will only be looked up locally. the newest information every day will be found in files `room\\roomplan-{date}.json`
 - partly **text descriptions** or url
-user input
-- more **text** in office-mode [in progress]
+  user input
+
+- more **text** in office-mode
+
 - **sensors**
-user select, must first be added in Homeassistant
+  user select, must first be added in Homeassistant
+
+  ⚠ check the **type of sensor** `sensor device classes` before you add other sensors, otherwise it could  probably not be showed
 
 # todo
 
-- [x] multy device(at least its running)
+- [x] multiple device
+- [x] cmd_control
+- [x] sensor select&display with type name
+- [ ] restart and keep data
+- [ ] selective classroom rather text
+- [ ] room not repeatable
+- [ ] member payload
 - [ ] add device manually (?)
-- [ ] ~~test files~~
+- [ ] test files
 
 ~~Studienarbeit verfassen~~
 
