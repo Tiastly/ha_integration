@@ -24,9 +24,10 @@ the information consist of 3 parts,
 - [x] multiple device
 - [x] cmd_control
 - [x] sensor select&display with type name
-- [ ] restart and keep data
-- [ ] selective classroom rather text
-- [ ] room not repeatable
+- [x] restart and keep data
+- [x] selectable classroom rather text
+- [ ] room not repeatable -> cannot create same room with same unique Id
+- [ ] move cmd_control to SelectEntity so that repeatable 
 - [ ] member payload
 - [ ] add device manually (?)
 - [ ] test files

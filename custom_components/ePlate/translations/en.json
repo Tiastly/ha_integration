@@ -19,11 +19,12 @@
             },
             "settings": {
                 "title": "Display  Settings",
-                "description": "This set the roominfomation about this display \n1. select room types \n2. enter supported rooms \n3.move the scrollbar to choose the refreshTime\n4. click next to continue",
+                "description": "This set the roominfomation about this display \n1. select room types \n2. enter supported rooms \n3.move the scrollbar to choose the refreshTime \n4. click next to continue.\n Tips: select others to enter office roomID",
                 "data": {
                     "roomtype": "roomType",
                     "roomID": "roomNr",
-                    "delay": "delay_min"
+                    "roomID_extend":"only for office type",
+                    "delay": "delay in min"
                 }
             }
         }

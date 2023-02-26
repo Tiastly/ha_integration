@@ -1,58 +1,58 @@
 {
-    "config": {
-        "flow_title": "E-Ink_Contoller",
-        "abort": {
-            "single_instance_allowed":"too fast, wait a monent",
-            "not_allowed":"this intergration use MQTT discovery ONLY",
-            "already_configured":"registered device, delete first",
-            "invalid room": "room not in roomlist",
-            "invalid":"room type and room number not match",
-            "no_data":42
-        },
-        "errors": {
-            "invalid room": "room not in roomlist"
-        },
-        "step": {
-            "user":{
-                "title": "Test entry",
-                "description": "This is a test entrance, with this you can creat a fake new display"
-            },
-            "settings": {
-                "title": "Display  Settings",
-                "description": "This set the roominfomation about this display \n1. select room types \n2. enter supported rooms \n3.move the scrollbar to choose the refreshTime\n4. click next to continue",
-                "data": {
-                    "roomtype": "roomType",
-                    "roomID": "roomNr",
-                    "delay": "delay_min"
-                }
-            }
-        }
+  "config": {
+    "flow_title": "E-Ink_Contoller",
+    "abort": {
+      "single_instance_allowed": "too fast, wait a monent",
+      "not_allowed": "this intergration use MQTT discovery ONLY",
+      "already_configured": "registered device, delete first",
+      "invalid room": "room not in roomlist",
+      "invalid": "room type and room number not match",
+      "no_data": 42
     },
-    "options": {
-        "errors": {
-            "too_many_sensors":"you can only choose maximum 3 sensors"
-        },
-        "step": {
-            "init": {
-                "data": {
-                    "async_step_update_timedelay": "change timedelay",
-                    "async_step_add_sensors": "add other sensors",
-                    "async_step_cmd":"use command topic"
-                },
-                "title": "Would you like to..."
-            },
-            "update_timedelay":{
-                "title": "Set timedelay",
-				"description": "set time delay in minutes"
-            },
-            "add_sensors":{
-                "title": "Add other sensors",
-                "description": "Select sensors to add to the display,you can maximum add 3 sensors"
-            },
-            "cmd":{
-                "title": "Select command topic",
-                "description": "there are 3 commands, you can only choose one of them"
-            }
+    "errors": {
+      "invalid room": "room not in roomlist"
+    },
+    "step": {
+      "user": {
+        "title": "Test entry",
+        "description": "This is a test entrance, with this you can creat a fake new display"
+      },
+      "settings": {
+        "title": "Display  Settings",
+        "description": "This set the roominfomation about this display \n1. select room types \n2. enter supported rooms \n3.move the scrollbar to choose the refreshTime\n4. click next to continue",
+        "data": {
+          "roomtype": "roomType",
+          "roomID": "roomNr",
+          "delay": "delay_min"
         }
+      }
     }
+  },
+  "options": {
+    "errors": {
+      "too_many_sensors": "you can only choose maximum 3 sensors"
+    },
+    "step": {
+      "init": {
+        "data": {
+          "async_step_update_timedelay": "change timedelay",
+          "async_step_add_sensors": "add other sensors",
+          "async_step_cmd": "use command topic"
+        },
+        "title": "Would you like to..."
+      },
+      "update_timedelay": {
+        "title": "Set timedelay",
+        "description": "set time delay in minutes"
+      },
+      "add_sensors": {
+        "title": "Add other sensors",
+        "description": "Select sensors to add to the display,you can maximum add 3 sensors"
+      },
+      "cmd": {
+        "title": "Select command topic",
+        "description": "there are 3 commands, you can only choose one of them"
+      }
+    }
+  }
 }

@@ -11,7 +11,7 @@ BASE_API_URL = "https://spluseins.de/api/splus"
 # types
 LECT_TYPE = {0: "current", 1: "next"}
 ROOM_TYPE = {0: "classroom type", 1: "office type"}
-CMD_TYPE = {0: "refresh immediately", 1: "clear all", 2: "reset the display"}
+CMD_TYPE = {1: "refresh immediately", 2: "clear all", 3: "reset the display"}
 
 # attributes
 ATTR_ROOM_ID = "roomID"
@@ -131,16 +131,6 @@ PATTERN_SENSOR_PAYLOAD = {
     }
 }
 SENSOR_PAYLOAD = {
-    ATTR_SENSOR: {
-        ATTR_SENSOR_INFO: None,
-        ATTR_SENSOR_UNIT: None,
-        ATTR_SENSOR_TYPE: None,
-    },
-    ATTR_SENSOR: {
-        ATTR_SENSOR_INFO: None,
-        ATTR_SENSOR_UNIT: None,
-        ATTR_SENSOR_TYPE: None,
-    },
     ATTR_SENSOR: {
         ATTR_SENSOR_INFO: None,
         ATTR_SENSOR_UNIT: None,

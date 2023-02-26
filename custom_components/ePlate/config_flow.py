@@ -1,27 +1,28 @@
 """Config flow for ePlate."""
 from __future__ import annotations
+
 import json
-import re
 import logging
-import voluptuous as vol
+import re
 from typing import Any
 
+import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
-import homeassistant.helpers.config_validation as cv
 from homeassistant.data_entry_flow import FlowResult
-
+import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.service_info.mqtt import MqttServiceInfo
-from .roomlist import ROOM_LIST
+
 from .const import (
-    DOMAIN,
-    ROOM_TYPE,
-    CMD_TYPE,
-    ATTR_DELAY_MIN,
     ATTR_DELAY_MAX,
+    ATTR_DELAY_MIN,
     ATTR_SENSOR_MAX,
+    CMD_TYPE,
+    DOMAIN,
     PATTERN_INIT_PAYLOAD,
+    ROOM_TYPE,
 )
+from .roomlist import ROOM_LIST
 
 _logger = logging.getLogger(__name__)
 
@@ -90,7 +91,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle a flow device settings."""
         errors = {}
         if user_input is not None:
-            if user_input["roomID"] in ROOM_LIST:
+            dummy = user_input.pop("roomID_extend",None)
+
+            if (user_input["roomID"] != "others" and user_input["roomtype"] == 0 or
+                user_input["roomID"] == "others" and user_input["roomtype"] == 1 and dummy
+            ):
+                if user_input["roomID"] == "others":
+                    user_input["roomID"] = dummy
                 self._data["config"] = dict(
                     zip(PATTERN_INIT_PAYLOAD, user_input.values())
                 )
@@ -98,12 +105,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return await self.async_step_confirm()
 
             errors["base"] = "invalid room"
-        # todo: selective room
+
         return self.async_show_form(
             step_id="settings",
             data_schema=vol.Schema(
                 {
-                    vol.Required("roomID"): str,
+                    vol.Required("roomID", default="A122"): vol.In(ROOM_LIST),
+                    vol.Optional("roomID_extend"): str,
                     vol.Required("roomtype"): vol.In(ROOM_TYPE),
                     vol.Required("delay", default=5): vol.All(
                         int, vol.Range(min=ATTR_DELAY_MIN, max=ATTR_DELAY_MAX)
@@ -134,7 +142,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
         self.config_entry = config_entry
-        # self._delay = config_entry.options.get("delay", 5)
         self._data = {
             "delay": config_entry.options.get("delay", 5),
             "sensor": config_entry.options.get("sensor", None),
@@ -145,7 +152,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """Handle init flow."""
         if user_input:
             if user_input.get("async_step_update_timedelay", False):
-                return await self.async_step_update_timedelay({})
+                return await self.async_step_update_timedelay()
             if user_input.get("async_step_add_sensors", False):
                 return await self.async_step_add_sensors()
             if user_input.get("async_step_cmd", False):

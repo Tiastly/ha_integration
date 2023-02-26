@@ -1,36 +1,37 @@
 """The ePlate integration."""
 from __future__ import annotations
-import logging
+
 from datetime import timedelta
-from homeassistant.core import HomeAssistant
-from homeassistant.const import Platform, ATTR_DEVICE_CLASS, ATTR_UNIT_OF_MEASUREMENT
+import logging
+
 from homeassistant.components import mqtt
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.typing import ConfigType
+from homeassistant.const import ATTR_DEVICE_CLASS, ATTR_UNIT_OF_MEASUREMENT, Platform
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
 # from homeassistant.util.enum import try_parse_enum
 from homeassistant.helpers.event import async_track_time_interval
-from .const import (
-    DOMAIN,
-    TOPIC_ID,
+from homeassistant.helpers.typing import ConfigType
+
+from .const import (  # PATTERN_INIT_PAYLOAD,
     ATTR_ROOM_ID,
     ATTR_ROOM_TYPE,
     ATTR_SENSOR_INFO,
-    ATTR_SENSOR_UNIT,
     ATTR_SENSOR_TYPE,
-    PATTERN_INIT,
-    PATTERN_DELAY,
+    ATTR_SENSOR_UNIT,
+    DOMAIN,
     PATTERN_BASE,
-    PATTERN_CMD,
-    PATTERN_PLAN,
-    PATTERN_MEMBER,
-    PATTERN_SENSOR,
-    # PATTERN_INIT_PAYLOAD,
     PATTERN_BASE_PAYLOAD,
-    PATTERN_PLAN_PAYLOAD,
+    PATTERN_CMD,
+    PATTERN_DELAY,
+    PATTERN_INIT,
+    PATTERN_MEMBER,
     PATTERN_MEMBER_PAYLOAD,
-    PATTERN_SENSOR_PAYLOAD,
+    PATTERN_PLAN,
+    PATTERN_PLAN_PAYLOAD,
+    PATTERN_SENSOR,
+    TOPIC_ID,
 )
 
 _logger = logging.getLogger(__name__)
@@ -127,9 +128,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id]["services"][
         "options_listener"
     ] = entry.add_update_listener(options_listener)
-    # if not hass.data[DOMAIN][entry.entry_id]["device"]:
-    #     await load_first_info(hass, entry)
-    # else:
     await load_first_info(hass, entry)
 
     return True
@@ -150,7 +148,7 @@ async def options_listener(hass: HomeAssistant, entry: ConfigEntry):
         change_publish_interval(
             hass=hass, entry=entry, time_interval=timedelta(minutes=delay / 2)
         )
-    elif sensors != [sensors for sensors in data_package["payload"]["sensor"].keys()] :
+    elif sensors != list(data_package["payload"]["sensor"].keys()):
         # make the sensor to ailas
         _logger.debug("sensor%s", sensors)
         if "delete all sensors" in sensors:
@@ -288,5 +286,4 @@ def payload_fix(payload, topid_id):
                     {f"{types}": {ATTR_SENSOR_INFO: info, ATTR_SENSOR_UNIT: unit}}
                 )
             return dump
-        # if sensor is empty
         return None
