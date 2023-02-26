@@ -3,17 +3,22 @@ from __future__ import annotations
 import logging
 from datetime import timedelta
 from homeassistant.core import HomeAssistant
-from homeassistant.const import Platform
+from homeassistant.const import Platform, ATTR_DEVICE_CLASS, ATTR_UNIT_OF_MEASUREMENT
 from homeassistant.components import mqtt
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers import device_registry as dr
+
+# from homeassistant.util.enum import try_parse_enum
 from homeassistant.helpers.event import async_track_time_interval
 from .const import (
     DOMAIN,
     TOPIC_ID,
     ATTR_ROOM_ID,
     ATTR_ROOM_TYPE,
+    ATTR_SENSOR_INFO,
+    ATTR_SENSOR_UNIT,
+    ATTR_SENSOR_TYPE,
     PATTERN_INIT,
     PATTERN_DELAY,
     PATTERN_BASE,
@@ -21,16 +26,17 @@ from .const import (
     PATTERN_PLAN,
     PATTERN_MEMBER,
     PATTERN_SENSOR,
-    #PATTERN_INIT_PAYLOAD,
+    # PATTERN_INIT_PAYLOAD,
     PATTERN_BASE_PAYLOAD,
     PATTERN_PLAN_PAYLOAD,
     PATTERN_MEMBER_PAYLOAD,
-    # PATTERN_SENSOR_PAYLOAD,
+    PATTERN_SENSOR_PAYLOAD,
 )
 
 _logger = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.TEXT]
+
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up from yaml."""
@@ -44,7 +50,7 @@ async def load_first_info(hass: HomeAssistant, entry: ConfigEntry):
     hass.data[DOMAIN][entry.entry_id]["device"] = device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, entry.data["device"]["identifiers"])},  # NOT CHANGE!
-        #identifiers={(DOMAIN, str(entry.unique_id)+"_"+entry.data["device"]["identifiers"])},
+        # identifiers={(DOMAIN, str(entry.unique_id)+"_"+entry.data["device"]["identifiers"])},
         name=entry.data["config"][ATTR_ROOM_ID],  # roomNr
         manufacturer=entry.data["device"]["manufacturer"],
         model=entry.data["device"]["model"],
@@ -79,14 +85,14 @@ async def load_first_info(hass: HomeAssistant, entry: ConfigEntry):
         )
     )
     # init topic publish
-    await once_mqtt_publish(hass, entry=entry, topic_id="init")
+    await once_mqtt_publish(hass, row_topic=entry, row_payload="init")
     # create entity
     if entry.data["config"][ATTR_ROOM_TYPE] == 0:  # classroom
         _logger.debug("loading class device %s", device_registry)
         PLATFORMS.append(Platform.SENSOR)
         change_publish_interval(
             hass, entry, timedelta(minutes=entry.data["config"]["delay"])
-        )# classroom only need routine publish
+        )  # classroom only need routine publish
     else:  # office
         _logger.debug("loading office device %s", device_registry)
         hass.data[DOMAIN][entry.entry_id]["topic"]["room"] = PATTERN_MEMBER.format(
@@ -128,26 +134,31 @@ async def options_listener(hass: HomeAssistant, entry: ConfigEntry):
     data_package = hass.data[DOMAIN][entry.entry_id]
     delay = entry.options.get("delay", None)
     sensors = entry.options.get("sensor", None)
-    cmd = entry.options.get("cmd",None)
+    cmd = entry.options.get("cmd", None)
     if delay:
         _logger.debug("delay changed to %s", delay)
         data_package["payload"]["delay"] = delay
-        if hass.data[DOMAIN][entry.entry_id]["services"].get("timmer",None):
+        if hass.data[DOMAIN][entry.entry_id]["services"].get("timmer", None):
             hass.data[DOMAIN][entry.entry_id]["services"]["timmer"]()
-        await once_mqtt_publish(hass=hass, entry=entry, topic_id="delay")
+        await once_mqtt_publish(hass=hass, row_topic=entry, row_payload="delay")
         change_publish_interval(
-            hass=hass, entry=entry, time_interval=timedelta(minutes=delay/2)
+            hass=hass, entry=entry, time_interval=timedelta(minutes=delay / 2)
         )
     elif sensors:
         # make the sensor to ailas
-        _logger.debug("sensor%s",sensors)
+        _logger.debug("sensor%s", sensors)
         if "delete all sensors" in sensors:
             sensors = None
+            return
         _logger.debug("sensor changed to %s", sensors)
         data_package["payload"]["sensor"] = dict.fromkeys(sensors)
+
     elif cmd is not None:
-        topic = PATTERN_CMD[cmd].format(roomID = entry.data["config"][ATTR_ROOM_ID])
-        await once_mqtt_publish(hass=hass, topic = topic,payload = "on",retain=False)
+        topic = PATTERN_CMD[cmd].format(roomID=entry.data["config"][ATTR_ROOM_ID])
+        await once_mqtt_publish(
+            hass=hass, row_topic=topic, row_payload="on", retain=False
+        )
+
 
 def change_publish_interval(
     hass: HomeAssistant, entry: ConfigEntry, time_interval: timedelta
@@ -161,41 +172,51 @@ def change_publish_interval(
         async def get_sensor_data(data_package):
             # update sensor information
             for sensor in data_package["payload"]["sensor"].keys():
-                data_package["payload"]["sensor"][sensor] = hass.states.get(
-                    sensor
-                ).state
+                state = hass.states.get(sensor)
+                if state is None:
+                    continue
+                data_package["payload"]["sensor"][sensor] = {
+                    ATTR_SENSOR_INFO: str(state.state),
+                    ATTR_SENSOR_UNIT: str(state.attributes.get(
+                        ATTR_UNIT_OF_MEASUREMENT, None)),
+                    ATTR_SENSOR_TYPE: state.attributes.get(
+                        ATTR_DEVICE_CLASS, None),
+                }
 
         if data_package["payload"]["init"][ATTR_ROOM_TYPE] == 0:  # classroom
-            await once_mqtt_publish(hass, entry = entry, topic_id="room")
+            await once_mqtt_publish(hass, row_topic=entry, row_payload="room")
         if data_package["payload"]["sensor"]:
             _logger.debug(data_package["payload"]["sensor"])
-            data_package["payload"]["sensor"] = await get_sensor_data(data_package)
-            await once_mqtt_publish(hass, entry=entry,topic_id= "sensor")
+            await get_sensor_data(data_package)
+            await once_mqtt_publish(hass, row_topic=entry, row_payload="sensor")
+
     _logger.debug("change publish interval to %s", time_interval)
     hass.data[DOMAIN][entry.entry_id]["services"]["timmer"] = async_track_time_interval(
-        hass, rountine_mqtt_publish, time_interval/2
+        hass, rountine_mqtt_publish, time_interval / 2
     )
 
-async def once_mqtt_publish(hass: HomeAssistant, **kwargs) -> bool:
+
+async def once_mqtt_publish(
+    hass: HomeAssistant, row_topic, row_payload, retain=True
+) -> bool:
     """make a mqtt publish once."""
-    retain_bit = kwargs.get("retain",True)
-    if retain_bit == False:
-        topic,payload,_ = kwargs.values()
-        _logger.debug("publishing to cmd topic %s",topic)
+    if retain is False:
+        topic, payload = row_topic, row_payload
+        _logger.debug("publishing to cmd topic %s", topic)
     else:
-        entry, topic_id = kwargs.values()
+        entry, topic_id = row_topic, row_payload
         data_package = hass.data[DOMAIN][entry.entry_id]
         topic = data_package["topic"][topic_id]
         payload = payload_fix(data_package["payload"][topic_id], topic_id)
         _logger.debug("publishing %s", data_package["topic"][topic_id])
-        
+
     try:
         await mqtt.async_publish(
             hass=hass,
             topic=topic,
             payload=payload,
             qos=0,
-            retain=retain_bit,
+            retain=retain,
         )
         return True
     except Exception as err:
@@ -211,9 +232,7 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     try:
-        unload_ok = await hass.config_entries.async_unload_platforms(
-            entry, PLATFORMS
-        )
+        unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
         # Remove all services.
         for service in hass.data[DOMAIN][entry.entry_id]["services"].values():
             service()
@@ -237,6 +256,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 def payload_fix(payload, topid_id):
     """fix payload"""
+
     if topid_id in ["init", "delay"]:
         return payload
     if topid_id == "room":
@@ -244,8 +264,8 @@ def payload_fix(payload, topid_id):
         if payload["next"]["rest/begin_time"]:
             start, end = payload["next"]["lect_info"].values()
         return {
-            "classNow": str(payload["current"]["lectures"] or "") ,
-            "classNowRemainTime": str(payload["current"]["rest/begin_time"]or 0),
+            "classNow": str(payload["current"]["lectures"] or ""),
+            "classNowRemainTime": str(payload["current"]["rest/begin_time"] or 0),
             "classNext": str(payload["next"]["lectures"] or ""),
             "classNextWaitTime": str(payload["next"]["rest/begin_time"] or 0),
             "classNextStartTime": str(start or ""),
@@ -254,10 +274,11 @@ def payload_fix(payload, topid_id):
     if topid_id == "sensor":
         if payload:
             dump = {}
-            i = 1
-            for key, value in payload.items():
-                dump.update({f"sensor{i}": {"name": key, "info": value}})
-                i += 1
+            for key,values in payload.items():
+                info,unit,types  = values.values()
+                if not types:
+                    types = key.strip("sensor.")
+                dump.update({f"{types}": {ATTR_SENSOR_INFO: info, ATTR_SENSOR_UNIT: unit}})
             return dump
         # if sensor is empty
         return None
