@@ -77,10 +77,14 @@ async def load_first_info(hass: HomeAssistant, entry: ConfigEntry):
             TOPIC_ID,
             [
                 entry.data["config"],  # init payload
-                int,  # delay payload
+                entry.options.get(
+                    "delay", entry.data["config"]["delay"]
+                ),  # delay payload
                 PATTERN_BASE_PAYLOAD,
                 PATTERN_PLAN_PAYLOAD,
-                None,  # sensor payload
+                dict.fromkeys(entry.options["sensor"])
+                if entry.options.get("sensor", None)
+                else None,
             ],
         )
     )
@@ -123,7 +127,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id]["services"][
         "options_listener"
     ] = entry.add_update_listener(options_listener)
-
+    # if not hass.data[DOMAIN][entry.entry_id]["device"]:
+    #     await load_first_info(hass, entry)
+    # else:
     await load_first_info(hass, entry)
 
     return True
@@ -132,10 +138,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def options_listener(hass: HomeAssistant, entry: ConfigEntry):
     """Handle options update."""
     data_package = hass.data[DOMAIN][entry.entry_id]
-    delay = entry.options.get("delay", None)
+    delay = entry.options.get("delay", data_package["payload"]["delay"])
     sensors = entry.options.get("sensor", None)
     cmd = entry.options.get("cmd", None)
-    if delay:
+    if delay != data_package["payload"]["delay"]:
         _logger.debug("delay changed to %s", delay)
         data_package["payload"]["delay"] = delay
         if hass.data[DOMAIN][entry.entry_id]["services"].get("timmer", None):
@@ -144,16 +150,16 @@ async def options_listener(hass: HomeAssistant, entry: ConfigEntry):
         change_publish_interval(
             hass=hass, entry=entry, time_interval=timedelta(minutes=delay / 2)
         )
-    elif sensors:
+    elif sensors != [sensors for sensors in data_package["payload"]["sensor"].keys()] :
         # make the sensor to ailas
         _logger.debug("sensor%s", sensors)
         if "delete all sensors" in sensors:
-            sensors = None
+            data_package["payload"]["sensor"] = None
             return
         _logger.debug("sensor changed to %s", sensors)
         data_package["payload"]["sensor"] = dict.fromkeys(sensors)
 
-    elif cmd is not None:
+    elif cmd:
         topic = PATTERN_CMD[cmd].format(roomID=entry.data["config"][ATTR_ROOM_ID])
         await once_mqtt_publish(
             hass=hass, row_topic=topic, row_payload="on", retain=False
@@ -177,10 +183,10 @@ def change_publish_interval(
                     continue
                 data_package["payload"]["sensor"][sensor] = {
                     ATTR_SENSOR_INFO: str(state.state),
-                    ATTR_SENSOR_UNIT: str(state.attributes.get(
-                        ATTR_UNIT_OF_MEASUREMENT, None)),
-                    ATTR_SENSOR_TYPE: state.attributes.get(
-                        ATTR_DEVICE_CLASS, None),
+                    ATTR_SENSOR_UNIT: str(
+                        state.attributes.get(ATTR_UNIT_OF_MEASUREMENT, None)
+                    ),
+                    ATTR_SENSOR_TYPE: state.attributes.get(ATTR_DEVICE_CLASS, None),
                 }
 
         if data_package["payload"]["init"][ATTR_ROOM_TYPE] == 0:  # classroom
@@ -274,11 +280,13 @@ def payload_fix(payload, topid_id):
     if topid_id == "sensor":
         if payload:
             dump = {}
-            for key,values in payload.items():
-                info,unit,types  = values.values()
+            for key, values in payload.items():
+                info, unit, types = values.values()
                 if not types:
                     types = key.strip("sensor.")
-                dump.update({f"{types}": {ATTR_SENSOR_INFO: info, ATTR_SENSOR_UNIT: unit}})
+                dump.update(
+                    {f"{types}": {ATTR_SENSOR_INFO: info, ATTR_SENSOR_UNIT: unit}}
+                )
             return dump
         # if sensor is empty
         return None

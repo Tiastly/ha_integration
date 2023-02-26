@@ -34,7 +34,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def __init__(self) -> None:
         """Initialize flow."""
         self._device = vol.UNDEFINED
-        self._data = {"unique_id": None,"device": None,"config": None,}
+        self._data = {
+            "unique_id": None,
+            "device": None,
+            "config": None,
+        }
         self._room_id = "undefined"
 
     async def async_step_mqtt(self, discovery_info: MqttServiceInfo) -> FlowResult:
@@ -46,9 +50,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._data["unique_id"] = payload["unique_id"]
         self._data["device"] = payload["device"]
 
-        _logger.debug(
-            "found device unique_id by mqtt: %s", self._data["unique_id"]
-        )
+        _logger.debug("found device unique_id by mqtt: %s", self._data["unique_id"])
 
         for entity in self._async_current_entries():
             if entity.unique_id == self._data["unique_id"]:
@@ -80,9 +82,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             }
             _logger.debug("test trigger entry")
             return await self.async_step_settings()
-        return self.async_show_form(
-                step_id="user"
-        )
+        return self.async_show_form(step_id="user")
+
     async def async_step_settings(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
@@ -102,7 +103,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="settings",
             data_schema=vol.Schema(
                 {
-                    vol.Required("roomID"):str,
+                    vol.Required("roomID"): str,
                     vol.Required("roomtype"): vol.In(ROOM_TYPE),
                     vol.Required("delay", default=5): vol.All(
                         int, vol.Range(min=ATTR_DELAY_MIN, max=ATTR_DELAY_MAX)
@@ -133,13 +134,18 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
         self.config_entry = config_entry
-        self._delay = config_entry.options.get("delay", 5)
+        # self._delay = config_entry.options.get("delay", 5)
+        self._data = {
+            "delay": config_entry.options.get("delay", 5),
+            "sensor": config_entry.options.get("sensor", None),
+            "cmd": None,
+        }
 
     async def async_step_init(self, user_input=None) -> FlowResult:
         """Handle init flow."""
         if user_input:
             if user_input.get("async_step_update_timedelay", False):
-                return await self.async_step_update_timedelay()
+                return await self.async_step_update_timedelay({})
             if user_input.get("async_step_add_sensors", False):
                 return await self.async_step_add_sensors()
             if user_input.get("async_step_cmd", False):
@@ -155,13 +161,14 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     ) -> FlowResult:
         """update timedelay."""
         if user_input:
-            return self.async_create_entry(title="", data=user_input)
+            self._data["delay"] = user_input["delay"]
+            return self.async_create_entry(title="", data=self._data)
 
         return self.async_show_form(
             step_id="update_timedelay",
             data_schema=vol.Schema(
                 {
-                    vol.Required("delay", default=self._delay): vol.All(
+                    vol.Required("delay", default=self._data["delay"]): vol.All(
                         int, vol.Range(min=ATTR_DELAY_MIN, max=ATTR_DELAY_MAX)
                     ),
                 }
@@ -175,7 +182,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         # add some regex to filter out other sensors
         for sensor in self.hass.states.async_entity_ids("sensor"):
             _logger.debug(sensor)
-            if not re.match(pattern = "sensor.*_(current|next)", string = sensor):
+            if not re.match(pattern="sensor.*_(current|next)", string=sensor):
                 all_sensors.append(sensor)
         all_sensors.sort()
         all_sensors.append("delete all sensors")
@@ -183,7 +190,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             if len(user_input["sensor"]) > ATTR_SENSOR_MAX:
                 errors["base"] = "too_many_sensors"
             else:
-                return self.async_create_entry(title="", data=user_input)
+                self._data["sensor"] = user_input["sensor"]
+                return self.async_create_entry(title="", data=self._data)
 
         return self.async_show_form(
             step_id="add_sensors",
@@ -195,15 +203,16 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             errors=errors,
         )
 
-    async def async_step_cmd(self,user_input = None)->FlowResult:
+    async def async_step_cmd(self, user_input=None) -> FlowResult:
         """select cmd"""
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            self._data["cmd"] = user_input["cmd"]
+            return self.async_create_entry(title="", data=self._data)
         return self.async_show_form(
             step_id="cmd",
             data_schema=vol.Schema(
                 {
                     vol.Required("cmd"): vol.In(CMD_TYPE),
                 }
-            )
+            ),
         )
