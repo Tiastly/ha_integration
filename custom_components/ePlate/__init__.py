@@ -36,8 +36,8 @@ from .const import (  # PATTERN_INIT_PAYLOAD,
 
 _logger = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.TEXT]
-
+# PLATFORMS: list[Platform] = [Platform.SELECT,Platform.TEXT]
+PLATFORMS: list[Platform] = [Platform.BUTTON, Platform.TEXT]
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up from yaml."""
@@ -105,9 +105,10 @@ async def load_first_info(hass: HomeAssistant, entry: ConfigEntry):
         )
         hass.data[DOMAIN][entry.entry_id]["payload"]["room"] = PATTERN_MEMBER_PAYLOAD
 
-    # firstly add base info text
+    # firstly add cmd control topic
     hass.async_create_task(
-        hass.config_entries.async_forward_entry_setup(entry, Platform.TEXT)
+        hass.config_entries.async_forward_entry_setup(entry, Platform.BUTTON)
+        # hass.config_entries.async_forward_entry_setup(entry, Platform.SELECT)
     )
 
 
@@ -156,9 +157,9 @@ async def options_listener(hass: HomeAssistant, entry: ConfigEntry):
             return
         _logger.debug("sensor changed to %s", sensors)
         data_package["payload"]["sensor"] = dict.fromkeys(sensors)
-
+    # additional cmd control
     elif cmd:
-        topic = PATTERN_CMD[cmd].format(roomID=entry.data["config"][ATTR_ROOM_ID])
+        topic = PATTERN_CMD[cmd-1].format(roomID=entry.data["config"][ATTR_ROOM_ID])
         await once_mqtt_publish(
             hass=hass, row_topic=topic, row_payload="on", retain=False
         )
