@@ -147,16 +147,23 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             "sensor": config_entry.options.get("sensor", None),
             "cmd": None,
         }
+        self._steps = []
 
     async def async_step_init(self, user_input=None) -> FlowResult:
         """Handle init flow."""
         if user_input:
             if user_input.get("async_step_update_timedelay", False):
-                return await self.async_step_update_timedelay()
+                self._steps.append(self.async_step_update_timedelay())
             if user_input.get("async_step_add_sensors", False):
-                return await self.async_step_add_sensors()
+                self._steps.append(self.async_step_add_sensors())
             if user_input.get("async_step_cmd", False):
-                return await self.async_step_cmd()
+                self._steps.append(self.async_step_cmd())
+
+            if self._steps:
+                self._steps.append(self.async_finish())
+                return await self._steps.pop(0)
+
+            return self.async_abort(reason="no_configurable_options")
         fields = {}
         fields[vol.Optional("async_step_update_timedelay")] = bool
         fields[vol.Optional("async_step_cmd")] = bool
@@ -169,8 +176,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """update timedelay."""
         if user_input:
             self._data["delay"] = user_input["delay"]
-            return self.async_create_entry(title="", data=self._data)
-
+            return await self._steps.pop(0)
+            
         return self.async_show_form(
             step_id="update_timedelay",
             data_schema=vol.Schema(
@@ -198,23 +205,24 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 errors["base"] = "too_many_sensors"
             else:
                 self._data["sensor"] = user_input["sensor"]
-                return self.async_create_entry(title="", data=self._data)
+                self._steps.pop(0)
+                return await self._steps[0]
 
         return self.async_show_form(
             step_id="add_sensors",
             data_schema=vol.Schema(
                 {
-                    vol.Required("sensor", default=[]): cv.multi_select(all_sensors),
+                    vol.Required("sensor", default=self._data["sensor"]): cv.multi_select(all_sensors),
                 }
             ),
             errors=errors,
         )
 
     async def async_step_cmd(self, user_input=None) -> FlowResult:
-        """select cmd"""
+        """select cmd."""
         if user_input is not None:
             self._data["cmd"] = user_input["cmd"]
-            return self.async_create_entry(title="", data=self._data)
+            return await self._steps.pop(0)
         return self.async_show_form(
             step_id="cmd",
             data_schema=vol.Schema(
@@ -223,3 +231,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 }
             ),
         )
+
+    async def async_finish(self, reload=True):
+        """finish."""
+        return self.async_create_entry(title="", data=self._data)

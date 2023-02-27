@@ -149,7 +149,9 @@ async def options_listener(hass: HomeAssistant, entry: ConfigEntry):
         change_publish_interval(
             hass=hass, entry=entry, time_interval=timedelta(minutes=delay / 2)
         )
-    elif sensors != list(data_package["payload"]["sensor"].keys()):
+    elif (not data_package["payload"]["sensor"]) or (
+        sensors != list(data_package["payload"]["sensor"].keys())
+    ):
         # make the sensor to ailas
         _logger.debug("sensor%s", sensors)
         if "delete all sensors" in sensors:
