@@ -21,15 +21,17 @@ the information consist of 3 parts,
 
 # todo
 
-- [x] multiple device
-- [x] cmd_control
+- [x] add: multiple device
+- [x] add: cmd_control
 - [x] sensor select&display with type name
-- [x] restart and keep data
-- [x] selectable classroom rather text
-- [ ] room not repeatable -> cannot create same room with same unique Id
-- [ ] move cmd_control to SelectEntity so that repeatable 
-- [ ] member payload
-- [ ] add device manually (?)
+- [x] fix: restart and keep data
+- [x] update: selectable classroom rather text
+- [ ] update: room not repeatable -> cannot create same room with same unique Id
+- [x] add: move cmd_control to ButtonEntity/SelectEntity so that repeatable 
+- [x] add: additionally message block for office type 
+- [ ] update: entity struct
+- [ ] update: member payload
+- [ ] add: add device manually (?)
 - [ ] test files
 
 ~~Studienarbeit verfassen~~

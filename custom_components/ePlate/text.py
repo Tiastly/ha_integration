@@ -1,27 +1,30 @@
-"""each room has description and qr-code"""
+"""each room has description and qr-code."""
 import logging
 import re
-from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
-from homeassistant.config_entries import ConfigEntry
+
 from homeassistant.components import mqtt
 from homeassistant.components.text import TextEntity, TextEntityDescription
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import Platform
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from .const import (
-    DOMAIN,
-    ATTR_ROOM_TYPE,
-    ATTR_QR,
+
+from .const import (  # ATTR_DELAY,; ATTR_DELAY_MIN,; ATTR_DELAY_MAX,
     ATTR_DIS,
-    ATTR_NAME,
-    ATTR_TEL,
     ATTR_MAIL,
-    ATTR_MSG,
-    PATTERN_BASE_PAYLOAD,
     ATTR_MEMBER_MAX,
+    ATTR_MSG,
+    ATTR_NAME,
+    ATTR_QR,
+    ATTR_ROOM_TYPE,
+    ATTR_TEL,
+    ATTR_MSG_TITLE,
+    ATTR_MSG_INFO,
+    DOMAIN,
+    PATTERN_BASE_PAYLOAD,
     PATTERN_MEMBER_PAYLOAD,
-    # ATTR_DELAY,
-    # ATTR_DELAY_MIN,
-    # ATTR_DELAY_MAX,
+    PATTERN_MSG,
+    PATTERN_MSG_PAYLOAD,
 )
 
 _logger = logging.getLogger(__name__)
@@ -48,6 +51,12 @@ TEXT_TYPES = {
     ),
     ATTR_MSG: TextEntityDescription(
         key=ATTR_MSG, name=ATTR_MSG, native_min=0, native_max=20
+    ),
+    ATTR_MSG_TITLE: TextEntityDescription(
+        key=ATTR_MSG_TITLE, name=ATTR_MSG_TITLE, native_min=0, native_max=20
+    ),
+    ATTR_MSG_INFO: TextEntityDescription(
+        key=ATTR_MSG_INFO, name=ATTR_MSG_INFO, native_min=0, native_max=20
     ),
 }
 
@@ -89,6 +98,17 @@ async def async_setup_entry(
                         data_package=data_package,
                     )
                     for itype in PATTERN_MEMBER_PAYLOAD[f"member{member_bit}"]
+                ]
+            )
+        async_add_entities(
+                [
+                    MSGInfoText(
+                        hass=hass,
+                        device=device,
+                        info_type=itype,
+                        data_package=data_package,
+                    )
+                    for itype in PATTERN_MSG_PAYLOAD
                 ]
             )
     return True
@@ -149,9 +169,28 @@ class BasicInfoText(InfoText):
         except Exception as err:
             _logger.error(err)
 
+class MSGInfoText(InfoText):
+    # def __init__(self, hass, device, info_type, data_package) -> None:
+    #     """Initialize the text."""
+    #     super().__init__(hass, device, info_type, data_package)
+    #     self._topic = PATTERN_MSG.format(roomID=self._attr_device_info["name"])
+
+    async def async_set_value(self, value: str) -> None:
+        PATTERN_MSG_PAYLOAD[self.name] = value
+        try:
+            await mqtt.async_publish(
+                hass=self._hass,
+                topic=PATTERN_MSG.format(roomID=self._attr_device_info["name"]),
+                payload=PATTERN_MSG_PAYLOAD,
+                qos=0,
+                retain=False,
+            )
+        except Exception as err:
+            _logger.error(err)
+
 
 class MemberInfoText(InfoText):
-    """save the memberinfo of the office"""
+    """save the memberinfo of the office."""
 
     def __init__(self, hass, device, info_type, member_bit, data_package) -> None:
         """Initialize the text."""

@@ -33,6 +33,8 @@ ATTR_NAME = "name"
 ATTR_TEL = "tel"
 ATTR_MAIL = "email"
 ATTR_MSG = "describtion"  # describtion msg
+ATTR_MSG_TITLE = "messageTitle"
+ATTR_MSG_INFO = "message"
 # sensor
 ATTR_SENSOR = "sensor"  # device_classes
 ATTR_SENSOR_INFO = "sensor_info"
@@ -121,6 +123,10 @@ PATTERN_MEMBER_PAYLOAD = {  # str
         ATTR_MAIL: "",
         ATTR_MSG: "",
     },
+}
+PATTERN_MSG_PAYLOAD = {  # str
+    ATTR_MSG_TITLE: None,
+    ATTR_MSG_INFO: None,
 }
 # max 3 sensors
 PATTERN_SENSOR_PAYLOAD = {
