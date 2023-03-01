@@ -7,6 +7,7 @@
             "already_configured":"registered device, delete first",
             "invalid room": "room not in roomlist",
             "invalid":"room type and room number not match",
+            "too long":"roomID should no longer than 4 characters",
             "no_data":42
         },
         "errors": {
@@ -19,7 +20,7 @@
             },
             "settings": {
                 "title": "Display  Settings",
-                "description": "This set the roominfomation about this display \n1. select room types \n2. enter supported rooms \n3.move the scrollbar to choose the refreshTime \n4. click next to continue.\n Tips: select others to enter office roomID",
+                "description": "This set the roominfomation about this display \nTips: select others to enter office roomID (no longer than 4 characters)",
                 "data": {
                     "roomtype": "roomType",
                     "roomID": "roomNr",

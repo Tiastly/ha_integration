@@ -35,7 +35,7 @@ TEXT_TYPES = {
     #     key=ATTR_DELAY, name=ATTR_DELAY, native_min=ATTR_DELAY_MIN, native_max=ATTR_DELAY_MAX,
     # ),
     ATTR_QR: TextEntityDescription(
-        key=ATTR_QR, name=ATTR_QR, native_min=0, native_max=50
+        key=ATTR_QR,name=ATTR_QR, native_min=0, native_max=50
     ),
     ATTR_DIS: TextEntityDescription(
         key=ATTR_DIS, name=ATTR_DIS, native_min=0, native_max=50
@@ -64,7 +64,7 @@ TEXT_TYPES = {
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> bool:
-    """Setup sensors from a config entry created in the integrations UI"""
+    """Setup sensors from a config entry created in the integrations UI."""
     data_package = hass.data[DOMAIN][entry.entry_id]
     device = data_package["device"]
     room_type = data_package["payload"]["init"][ATTR_ROOM_TYPE]
@@ -87,7 +87,7 @@ async def async_setup_entry(
             hass.config_entries.async_forward_entry_setup(entry, Platform.SENSOR)
         )
     elif room_type == 1:  # contiue to add member
-        for member_bit in range(1, ATTR_MEMBER_MAX+1):
+        for member_bit in range(1, ATTR_MEMBER_MAX + 1):
             async_add_entities(
                 [
                     MemberInfoText(
@@ -115,8 +115,8 @@ async def async_setup_entry(
 
 
 class InfoText(TextEntity):
-    """parent class for all text entities"""
-
+    """parent class for all text entities."""
+    # todo change stuct
     def __init__(self, hass, device, info_type: str, data_package) -> None:
         """Initialize the text."""
         self._hass = hass
@@ -142,22 +142,23 @@ class InfoText(TextEntity):
         """Return the unique ID of the sensor."""
         return f"{self.name}"
 
-    @property
-    def name(self) -> str:
-        return f"{self._device.name}_{self._info_type}"
+    # @property
+    # def name(self) -> str:
+    #     return f"{self._device.name}_{self._info_type}"
 
 
 class BasicInfoText(InfoText):
-    """save the description and qr-code of the room"""
+    """save the description and qr-code of the room."""
 
     async def async_set_value(self, value: str) -> None:
         # when the value changed, make the mqtt publish
-        #if self._info_type == ATTR_QR and not re.match(
-         #   pattern="[a-zA-z]+://[^\s]*", string=value
-        #):
-         #   raise ValueError("invalid url")
+        # if self._info_type == ATTR_QR and not re.match(
+        #   pattern="[a-zA-z]+://[^\s]*", string=value
+        # ):
+        #   raise ValueError("invalid url")
 
         self._data_package["payload"]["base"][self._info_type] = value
+        _logger.debug("topic:%s\npayload:%s",self._data_package["topic"]["base"],self._data_package["payload"]["base"])
         try:
             await mqtt.async_publish(
                 hass=self._hass,
@@ -170,11 +171,7 @@ class BasicInfoText(InfoText):
             _logger.error(err)
 
 class MSGInfoText(InfoText):
-    # def __init__(self, hass, device, info_type, data_package) -> None:
-    #     """Initialize the text."""
-    #     super().__init__(hass, device, info_type, data_package)
-    #     self._topic = PATTERN_MSG.format(roomID=self._attr_device_info["name"])
-
+   
     async def async_set_value(self, value: str) -> None:
         PATTERN_MSG_PAYLOAD[self.name] = value
         try:
@@ -207,16 +204,17 @@ class MemberInfoText(InfoText):
         ):
             raise ValueError("invalid tel")
         if self._info_type == ATTR_MAIL and not re.match(
-            pattern="^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$", string=value
+            pattern="^\\w+([-+.]\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*$", string=value
         ):
             raise ValueError("invalid mail")
         member = self._data_package["payload"]["room"][self._member_bit]
         member[self._info_type] = value
+        _logger.debug({self._member_bit:member})
         try:
             await mqtt.async_publish(
                 hass=self._hass,
                 topic=self._data_package["topic"]["room"],
-                payload=self._data_package["payload"]["room"],
+                payload={self._member_bit:member},
                 qos=0,
                 retain=True,
             )

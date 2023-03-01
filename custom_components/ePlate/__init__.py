@@ -39,6 +39,7 @@ _logger = logging.getLogger(__name__)
 # PLATFORMS: list[Platform] = [Platform.SELECT,Platform.TEXT]
 PLATFORMS: list[Platform] = [Platform.BUTTON, Platform.TEXT]
 
+
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up from yaml."""
     hass.data[DOMAIN] = {}
@@ -90,7 +91,7 @@ async def load_first_info(hass: HomeAssistant, entry: ConfigEntry):
         )
     )
     # init topic publish
-    await once_mqtt_publish(hass, row_topic=entry, row_payload="init")
+    await once_mqtt_publish(hass, row_topic=entry, row_payload="init",retain=False)
     # create entity
     if entry.data["config"][ATTR_ROOM_TYPE] == 0:  # classroom
         _logger.debug("loading class device %s", device_registry)
@@ -145,7 +146,7 @@ async def options_listener(hass: HomeAssistant, entry: ConfigEntry):
         data_package["payload"]["delay"] = delay
         if hass.data[DOMAIN][entry.entry_id]["services"].get("timmer", None):
             hass.data[DOMAIN][entry.entry_id]["services"]["timmer"]()
-        await once_mqtt_publish(hass=hass, row_topic=entry, row_payload="delay")
+        await once_mqtt_publish(hass=hass, row_topic=entry, row_payload="delay",retain=True)
         change_publish_interval(
             hass=hass, entry=entry, time_interval=timedelta(minutes=delay / 2)
         )
@@ -162,9 +163,9 @@ async def options_listener(hass: HomeAssistant, entry: ConfigEntry):
     # additional cmd control
     elif cmd:
         topic = PATTERN_CMD[cmd-1].format(roomID=entry.data["config"][ATTR_ROOM_ID])
-        await once_mqtt_publish(
-            hass=hass, row_topic=topic, row_payload="on", retain=False
-        )
+        # await once_mqtt_publish(
+        #     hass=hass, row_topic=topic, row_payload="on", retain=False
+        # )
 
 
 def change_publish_interval(
@@ -191,12 +192,12 @@ def change_publish_interval(
                 }
 
         if data_package["payload"]["init"][ATTR_ROOM_TYPE] == 0:  # classroom
-            await once_mqtt_publish(hass, row_topic=entry, row_payload="room")
+            await once_mqtt_publish(hass, row_topic=entry, row_payload="room",retain=True)
         if data_package["payload"]["sensor"]:
             _logger.debug(data_package["payload"]["sensor"])
             await get_sensor_data(data_package)
-            await once_mqtt_publish(hass, row_topic=entry, row_payload="sensor")
-
+            await once_mqtt_publish(hass, row_topic=entry, row_payload="sensor",retain=True)
+    
     _logger.debug("change publish interval to %s", time_interval)
     hass.data[DOMAIN][entry.entry_id]["services"]["timmer"] = async_track_time_interval(
         hass, rountine_mqtt_publish, time_interval / 2
@@ -204,18 +205,19 @@ def change_publish_interval(
 
 
 async def once_mqtt_publish(
-    hass: HomeAssistant, row_topic, row_payload, retain=True
-) -> bool:
+    hass: HomeAssistant, row_topic, row_payload, retain) -> bool:
     """make a mqtt publish once."""
-    if retain is False:
-        topic, payload = row_topic, row_payload
-        _logger.debug("publishing to cmd topic %s", topic)
-    else:
-        entry, topic_id = row_topic, row_payload
-        data_package = hass.data[DOMAIN][entry.entry_id]
-        topic = data_package["topic"][topic_id]
-        payload = payload_fix(data_package["payload"][topic_id], topic_id)
-        _logger.debug("publishing %s", data_package["topic"][topic_id])
+    # if retain is False:
+    #     topic, payload = row_topic, row_payload
+    #     _logger.debug("publishing to cmd topic %s", topic)
+    # else:
+    entry, topic_id = row_topic, row_payload
+    data_package = hass.data[DOMAIN][entry.entry_id]
+    topic = data_package["topic"][topic_id]
+    payload = payload_fix(data_package["payload"][topic_id], topic_id)
+    _logger.debug("------publishing--------------------")
+    _logger.debug("topic:%s",topic)
+    _logger.debug("payload:%s",payload)
 
     try:
         await mqtt.async_publish(
@@ -283,6 +285,8 @@ def payload_fix(payload, topid_id):
             dump = {}
             for key, values in payload.items():
                 info, unit, types = values.values()
+                if unit == "°C" or "°F":
+                    unit = unit[-1]
                 if not types:
                     types = key.strip("sensor.")
                 dump.update(

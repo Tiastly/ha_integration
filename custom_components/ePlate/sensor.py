@@ -1,29 +1,29 @@
 """classroom platform."""
 from __future__ import annotations
 
+from datetime import timedelta, timezone
 import logging
 from typing import Any
-from datetime import timedelta, timezone
-import homeassistant.util.dt as dt_util
 
-from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import Entity
-from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_time_interval
+import homeassistant.util.dt as dt_util
 
-from .scrap import ClassroomData
 from .const import (
-    DOMAIN,
-    TIME_SHIFT,
-    LECT_TYPE,
     ATTR_DELAY_MIN,
-    ATTR_LECT,
     ATTR_INFO,
+    ATTR_LECT,
     ATTR_TIME,
+    DOMAIN,
+    LECT_TYPE,
     PATTERN_PLAN_SUB_PAYLOAD,
+    TIME_SHIFT,
 )
+from .scrap import ClassroomData
 
 _logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ _logger = logging.getLogger(__name__)
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> bool:
-    """Setup sensors from a config entry created in the integrations UI"""
+    """Setup sensors from a config entry created in the integrations UI."""
     data_package = hass.data[DOMAIN][entry.entry_id]
     device = data_package["device"]
     # delay = data_package["payload"][TOPIC_ID[0]][ATTR_DELAY]
@@ -44,24 +44,27 @@ async def async_setup_entry(
         location=device.name,
         time_interval=delay,
     )
-    lectures = [LectureEntity(
-                hass=hass,
-                classroom=classroom,
-                lect_type=lect,
-                time_interval=timedelta(minutes=delay),
-                device=device,
-                data_package=data_package,
-                )
-                for lect in LECT_TYPE]
+    lectures = [
+        LectureEntity(
+            hass=hass,
+            classroom=classroom,
+            lect_type=lect,
+            time_interval=timedelta(minutes=delay),
+            device=device,
+            data_package=data_package,
+        )
+        for lect in LECT_TYPE
+    ]
     for lect in lectures:
         await lect.async_update_lect()
+        
     async_add_entities(lectures)
     _logger.debug("init sensor finished")
     return True
 
 
 class LectureEntity(Entity):
-    """each lecture+lecture_info+rest/beginTime"""
+    """each lecture+lecture_info+rest/beginTime."""
 
     def __init__(
         self,
@@ -110,10 +113,11 @@ class LectureEntity(Entity):
         return self._attrs
 
     async def async_update_lect(self) -> None:
-        """update the sensor infomations"""
+        """update the sensor infomations."""
         await self._data.async_update()
-        self._state = dt_util.now(
-            timezone(offset=TIME_SHIFT)).strftime("%Y-%m-%d %H:%M:%S")
+        self._state = dt_util.now(timezone(offset=TIME_SHIFT)).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
         # self._state = self._data.now_time#update time
         if self._lect_type == 0:
             self._attrs[ATTR_TIME] = self._data.rest_time

@@ -1,20 +1,20 @@
-"""api scrap and row processing"""
+"""api scrap and row processing."""
 from __future__ import annotations
-import datetime
 
+import concurrent.futures
+import datetime
 import json
 import logging
-import aiohttp
+
 import aiofiles
+import aiohttp
 import dateutil.parser
-import concurrent.futures
-from datetime import timedelta, timezone
-import homeassistant.util.dt as dt_util
+
+from .const import BASE_API_URL, TIME_SHIFT, tTime
+from .studenplan import STUDEN_PLAN
 
 # from homeassistant.util.dt import now
 
-from .studenplan import STUDEN_PLAN
-from .const import TIME_SHIFT, tTime, BASE_API_URL
 
 _logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ _logger = logging.getLogger(__name__)
 
 
 class Scrap:
-    """scrap the classinfomation"""
+    """scrap the classinfomation."""
 
     def __init__(self, session, now, location=None):
         self._now = now
@@ -30,13 +30,13 @@ class Scrap:
         # self._lo = location
 
     def week_info(self):
-        """week infomation"""
+        """week infomation."""
         today = self._now.date()
         number = today.isocalendar()[1]
         return number
 
     async def single_request(self, url: str):
-        """processing the single url requst"""
+        """processing the single url requst."""
         data = []
         try:
             # session = async_get_clientsession(self._hass)
@@ -74,7 +74,7 @@ class Scrap:
         return data
 
     async def full_request(self):
-        """processing todays all classroom infomation"""
+        """processing todays all classroom infomation."""
         tasks = []
         week = self.week_info()
         urls = []
@@ -93,29 +93,31 @@ class Scrap:
         return [dict(t) for t in {tuple(d.items()) for d in tasks}]
 
     async def reorder_as_location(self):
-        """reorder the infomation to classroom order"""
+        """reorder the infomation to classroom order."""
         from copy import deepcopy
+
         room = []
         semester = await self.full_request()
         for lecture in semester:
             for lo in lecture["location"].split(","):
                 dummy_lec = deepcopy(lecture)
                 # HS A, P6, P7 has space after comma
-                dummy_lec["location"] = lo.lstrip()
+                dummy_lec["location"] = lo.lstrip()[:4]
                 room.append(dummy_lec)
         return sorted(room, key=lambda tasks: (tasks["location"], tasks["start"]))
 
     async def write_local(self, file):
-        """save the timetable"""
+        """save the timetable."""
         res = await self.reorder_as_location()
         async with aiofiles.open(file, "w+") as f:
             await f.write(json.dumps(res, indent=4))
             await f.flush()
         _logger.debug("Wrote results in %s", self._now.date())
 
-    async def lookup_location(self, lo = None):
-        """default update all"""
+    async def lookup_location(self, lo=None):
+        """default update all."""
         import os
+
         # paths = f"{os.path.abspath(os.curdir)}/custom_components/ePlate/room"
         # # test only
         paths = f"{os.path.abspath(os.curdir)}/homeassistant/components/scheduletracker/room"
@@ -125,7 +127,7 @@ class Scrap:
         if not os.path.isfile(files):
             await self.write_local(file=files)
         try:
-            with open(files, "r", encoding="utf-8") as f:
+            with open(files, encoding="utf-8") as f:
                 room = json.loads(f.read())
             if not lo:
                 _logger.debug("Daily update at %s", self._now.date())
@@ -144,9 +146,9 @@ class Scrap:
             return res
 
         except json.decoder.JSONDecodeError:  # today has no lecture
-            _logger.debug("%s has no lecture",self._now.date())
+            _logger.debug("%s has no lecture", self._now.date())
             return []
-        except IOError as io_error:
+        except OSError as io_error:
             _logger.debug("I/O error %s): %s", io_error.errno, io_error.strerror)
         except Exception as exceptions:
             _logger.debug("Unexpected error %s", exceptions)
@@ -154,7 +156,7 @@ class Scrap:
 
 class ClassroomData:
     """each classroom has one dataclass,
-    get the current location information
+    get the current location information.
     """
 
     def __init__(self, session, location, time_interval):
@@ -179,28 +181,28 @@ class ClassroomData:
 
     @property
     def now(self):
-        """current time"""
+        """current time."""
         # return dt_util.now(timezone(offset=TIME_SHIFT))
         return self._now
 
     @property
     def locations(self):
-        """roomName"""
+        """roomName."""
         return self._lo
 
     @property
     def now_time(self):
-        """current time"""
+        """current time."""
         return self._now
 
     @property
     def curr_lecture(self):
-        """current lecture"""
+        """current lecture."""
         return self._lect["title"]
 
     @property
     def curr_info(self):
-        """information about current lecture"""
+        """information about current lecture."""
         return (
             {
                 "start": self._lect["start"].strftime("%H:%M"),
@@ -212,7 +214,7 @@ class ClassroomData:
 
     @curr_info.setter
     def curr_info(self, lecture: dict):
-        """set current lecture"""
+        """set current lecture."""
         self._lect = {
             "title": lecture["title"],
             "start": lecture["start"],
@@ -220,7 +222,7 @@ class ClassroomData:
         }
 
     def _clear_curr_lect(self):
-        """clear current lecture"""
+        """clear current lecture."""
         self._lect = {
             "title": None,
             "start": None,
@@ -229,12 +231,12 @@ class ClassroomData:
 
     @property
     def next_lecture(self):
-        """next lecture"""
+        """next lecture."""
         return self._next_lect["title"]
 
     @property
     def next_info(self):
-        """information about next lecture"""
+        """information about next lecture."""
         return (
             {
                 "start": self._next_lect["start"].strftime("%H:%M"),
@@ -246,7 +248,7 @@ class ClassroomData:
 
     @next_info.setter
     def next_info(self, lecture: dict):
-        """set next lecture"""
+        """set next lecture."""
         self._next_lect = {
             "title": lecture["title"],
             "start": lecture["start"],
@@ -254,7 +256,7 @@ class ClassroomData:
         }
 
     def _clear_next_lect(self):
-        """clear current lecture"""
+        """clear current lecture."""
         self._next_lect = {
             "title": None,
             "start": None,
@@ -263,23 +265,23 @@ class ClassroomData:
 
     @property
     def is_free(self):
-        """classroom busy"""
+        """classroom busy."""
         return self._free
 
     @property
     def rest_time(self):
-        """rest time current lecture"""
+        """rest time current lecture."""
         if self._lect["end"]:
             return self._time_format(self._lect["end"])
 
     @property
     def begin_time(self):
-        """rest time to next lecture"""
+        """rest time to next lecture."""
         if self._next_lect["start"]:
             return self._time_format(self._next_lect["start"])
 
     def update_time(self):
-        """force update lecture"""
+        """force update lecture."""
         if self._update_time - self._time_interval <= 0:
             if self.curr_lecture:
                 self._update_time = self.rest_time
@@ -290,9 +292,11 @@ class ClassroomData:
         return self._update_time
 
     async def async_update(self):
-        """update the infomation in time_interval"""
+        """update the infomation in time_interval."""
         self._now += datetime.timedelta(minutes=self._time_interval)
-        _logger.debug("now:%s,curr:%s,next%s",self._now,self.curr_lecture,self._next_lect)
+        _logger.debug(
+            "now:%s,curr:%s,next%s", self._now, self.curr_lecture, self._next_lect
+        )
         # time here means current time
         # if any lecture has been scheduled
         # then not need to update the whole lecture, rather the rest of both time
@@ -303,19 +307,20 @@ class ClassroomData:
         await self.async_update_rest()
 
     async def async_update_rest(self):
-        """only update the rest_time and begin_time"""
+        """only update the rest_time and begin_time."""
         _logger.debug("Update from rest%s", self._now)
         self.update_time()
         return [self.rest_time, self.begin_time]
 
     async def async_update_lect(self):
-        """update the lecture infomation"""
+        """update the lecture infomation."""
         # update_time == 0, update the timetable/lect, otherwise will only update rest_time
-        _logger.debug("Update from lect%s,location%s", self._now,self._lo)
+        _logger.debug("Update from lect%s,location%s", self._now, self._lo)
 
         location_plan = await Scrap(
             now=self._now, session=self._session, location=self._lo
         ).lookup_location(self._lo)
+
         def positing():
             cur = None
             nex = None
@@ -356,7 +361,7 @@ class ClassroomData:
 
     # data processing help functions
     def _time_convert(self, time: str) -> datetime:
-        """change the starttime format only"""
+        """change the starttime format only."""
         return dateutil.parser.isoparse(time)
 
     def _time_format(self, date_time):

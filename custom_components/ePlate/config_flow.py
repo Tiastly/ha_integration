@@ -71,7 +71,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(  # test
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """test trigger entry"""
+        """test trigger entry."""
         if user_input is not None:
             self._data["unique_id"] = "test000"
             self._data["device"] = {
@@ -92,17 +92,17 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
         if user_input is not None:
             dummy = user_input.pop("roomID_extend",None)
-
             if (user_input["roomID"] != "others" and user_input["roomtype"] == 0 or
                 user_input["roomID"] == "others" and user_input["roomtype"] == 1 and dummy
             ):
                 if user_input["roomID"] == "others":
                     user_input["roomID"] = dummy
-                self._data["config"] = dict(
+                if len(user_input["roomID"]) < 5:
+                    self._data["config"] = dict(
                     zip(PATTERN_INIT_PAYLOAD, user_input.values())
-                )
-                self._room_id = user_input["roomID"]
-                return await self.async_step_confirm()
+                    )
+                    self._room_id = user_input["roomID"]
+                    return await self.async_step_confirm()
 
             errors["base"] = "invalid room"
 
@@ -195,7 +195,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         errors = {}
         # add some regex to filter out other sensors
         for sensor in self.hass.states.async_entity_ids("sensor"):
-            _logger.debug(sensor)
             if not re.match(pattern="sensor.*_(current|next)", string=sensor):
                 all_sensors.append(sensor)
         all_sensors.sort()
@@ -205,8 +204,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 errors["base"] = "too_many_sensors"
             else:
                 self._data["sensor"] = user_input["sensor"]
-                self._steps.pop(0)
-                return await self._steps[0]
+                return await self._steps.pop(0)
 
         return self.async_show_form(
             step_id="add_sensors",

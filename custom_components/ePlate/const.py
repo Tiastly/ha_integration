@@ -4,7 +4,7 @@ from datetime import timedelta
 tTime = "2023-3-1T6:57:00.000Z"  # basic_time only for test
 
 DOMAIN ="ePlate"
-#DOMAIN = "scheduletracker"
+# DOMAIN = "scheduletracker"
 TIME_SHIFT = timedelta(hours=1)
 BASE_API_URL = "https://spluseins.de/api/splus"
 
@@ -64,6 +64,7 @@ PATTERN_CMD_RESET = "/ePlate/{roomID}/factoryReset"
 PATTERN_CMD = [PATTERN_CMD_FRESH, PATTERN_CMD_CLEAR, PATTERN_CMD_RESET]
 PATTERN_PLAN = "/ePlate/{roomID}/plannung"
 PATTERN_MEMBER = "/ePlate/{roomID}/member"
+PATTERN_MSG = "/ePlate/{roomID}/message" # special for office
 PATTERN_SENSOR = "/ePlate/{roomID}/sensor"
 # payload-patterns
 PATTERN_INIT_PAYLOAD = {  # from init
@@ -125,8 +126,8 @@ PATTERN_MEMBER_PAYLOAD = {  # str
     },
 }
 PATTERN_MSG_PAYLOAD = {  # str
-    ATTR_MSG_TITLE: None,
-    ATTR_MSG_INFO: None,
+    ATTR_MSG_TITLE: "",
+    ATTR_MSG_INFO: "",
 }
 # max 3 sensors
 PATTERN_SENSOR_PAYLOAD = {
@@ -135,11 +136,4 @@ PATTERN_SENSOR_PAYLOAD = {
         ATTR_SENSOR_UNIT: None,
         ATTR_SENSOR_TYPE: None,
     }
-}
-SENSOR_PAYLOAD = {
-    ATTR_SENSOR: {
-        ATTR_SENSOR_INFO: None,
-        ATTR_SENSOR_UNIT: None,
-        ATTR_SENSOR_TYPE: None,
-    },
 }

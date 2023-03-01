@@ -66,16 +66,12 @@ class CMD_Control(ButtonEntity):
     def name(self) -> str:
         return f"{self._device.name}_{self._topic.rsplit('/', maxsplit=1)[-1]}"
 
-    # @property
-    # def entity_description(self) -> str:
-    #     return f"{self._topic.rsplit('/', maxsplit=1)[-1]}"
-
     async def async_press(self) -> None:
         try:
             await mqtt.async_publish(
                 hass=self._hass,
                 topic=self._topic,
-                payload="on",
+                payload="{on}",
                 qos=0,
                 retain=False,
             )
