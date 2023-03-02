@@ -26,12 +26,20 @@ the information consist of 3 parts,
 - [x] sensor select&display with type name
 - [x] fix: restart and keep data
 - [x] update: selectable classroom rather text
-- [ ] update: room not repeatable -> cannot create same room with same unique Id
-- [x] add: move cmd_control to ButtonEntity/SelectEntity so that repeatable 
+- [x] update: room not repeatable -> cannot create same room with same unique Id
+- [x] add: move cmd_control to ButtonEntity so that repeatable 
 - [x] add: additionally message block for office type 
+- [ ] fix: illegal Manual entry-code 
+- [ ] fix: keep member after restart
+- [ ] fix: empty text
 - [ ] update: entity struct
 - [ ] update: member payload
-- [ ] add: add device manually (?)
+- [ ] UI Guide
+  - [x] update: Modiauswahl 
+  - [ ] add: Sensorauswahl
+
+- [x] add: add device manually
+- [ ] add: device status
 - [ ] test files
 
 ~~Studienarbeit verfassen~~

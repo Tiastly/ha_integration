@@ -10,15 +10,16 @@ BASE_API_URL = "https://spluseins.de/api/splus"
 
 # types
 LECT_TYPE = {0: "current", 1: "next"}
-ROOM_TYPE = {0: "classroom type", 1: "office type"}
+ROOM_TYPE = {0: "classroom mode", 1: "office mode"}
 CMD_TYPE = {1: "refresh immediately", 2: "clear all", 3: "reset the display"}
-
+SUPPLY_TYPE = {0: "Battery only", 1: "with cable"}
 # attributes
 ATTR_ROOM_ID = "roomID"
 ATTR_ROOM_TYPE = "roomType"
 ATTR_QR = "roomQRCode"
 ATTR_DIS = "roomDescribtion"
 ATTR_DELAY = "delay"
+ATTR_SUPPLY = "supplyType"
 ATTR_CMD = "command"
 ATTR_DELAY_MIN = 1
 ATTR_DELAY_MAX = 30
@@ -47,10 +48,10 @@ DISCOVERY_PAYLOAD = {
     "unique_id": "",
     "device": {
         "identifiers": "",
-        "manufacturer": "",
-        "model": "",
-        "name": "",
-        "sw_version": "",
+        "manufacturer": "WaveShare",
+        "model": "EPD7IN5",
+        "name": "1",
+        "sw_version": "1.0"
     },
 }
 TOPIC_ID = ["init", "delay", "base", "room", "sensor"]
@@ -58,6 +59,7 @@ TOPIC_ID = ["init", "delay", "base", "room", "sensor"]
 PATTERN_INIT = "/ePlate/{unique_id}/init/"
 PATTERN_DELAY = "/ePlate/{roomID}/refreshTime"
 PATTERN_BASE = "/ePlate/{roomID}/baseInfo"
+# PATTERN_BASE_STATE = "/ePlate/{roomID}/state"
 PATTERN_CMD_FRESH = "/ePlate/{roomID}/refresh"
 PATTERN_CMD_CLEAR = "/ePlate/{roomID}/clear"
 PATTERN_CMD_RESET = "/ePlate/{roomID}/factoryReset"
@@ -71,6 +73,7 @@ PATTERN_INIT_PAYLOAD = {  # from init
     ATTR_ROOM_ID: str,
     ATTR_ROOM_TYPE: ROOM_TYPE,
     ATTR_DELAY: int,
+    ATTR_SUPPLY: int
 }
 # only numbers
 PATTERN_DELAY_PAYLOAD = {

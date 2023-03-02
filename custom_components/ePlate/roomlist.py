@@ -4,16 +4,16 @@
 # """
 ROOM_LIST = [
     # # Allgemein
-    #     'Aula',
-    #     'P1',
-    #     'P2',
-    #     'P3',
-    #     'P4',
-    #     'P6',
-    #     'P7',
+    'Aula',
+    'P1',
+    'P2',
+    'P3',
+    'P4',
+    'P6',
+    'P7',
     # # Räume Fakultät
-    #     'HS A',
-    #     'HS E',
+    'HS A',
+    'HS E',
     "A122",
     "A126",
     "C004",
@@ -44,5 +44,4 @@ ROOM_LIST = [
     "L038 Labor LE",
     "L126 Labor IT",
     "L129 Labor HF",
-    "others",
 ]

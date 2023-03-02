@@ -1,34 +1,58 @@
 {
     "config": {
-        "flow_title": "E-Ink_Contoller",
+        "flow_title": "E-Ink_Controller",
         "abort": {
-            "single_instance_allowed":"too fast, wait a monent",
-            "not_allowed":"this intergration use MQTT discovery ONLY",
+            "not_allowed":"this integration use MQTT discovery ONLY",
             "already_configured":"registered device, delete first",
-            "invalid room": "room not in roomlist",
+            "invalid room": "room not in room list",
             "invalid":"room type and room number not match",
-            "too long":"roomID should no longer than 4 characters",
             "no_data":42
         },
         "errors": {
-            "invalid room": "room not in roomlist"
+            "invalid id": "Invalid identifiers, please check code on display again",
+            "invalid room": "roomID not supported",
+            "sensor_exists": "roomID already exists"
+
         },
         "step": {
             "user":{
-                "title": "Test entry",
-                "description": "This is a test entrance, with this you can creat a fake new display"
+                "title": "Manual Setup",
+                "description": "please add the 4 bit code on display to continue"
             },
-            "settings": {
-                "title": "Display  Settings",
-                "description": "This set the roominfomation about this display \nTips: select others to enter office roomID (no longer than 4 characters)",
+            "setType": {
+                "title": "Display type setting",
+                "description": "firstly, please select the type of display",
+                "menu_options":
+                    {
+                        "setClass": "Classroom type",
+                        "setOffice": "Office type"
+                    }
+                }
+            },
+            "setClass":{
+                "title": "Setup Classroom",
+                "description": "1. select the supported roomID\n2. enter the delay time in minutes\n",
                 "data": {
-                    "roomtype": "roomType",
                     "roomID": "roomNr",
-                    "roomID_extend":"only for office type",
+                    "delay": "refresh time"
+                },
+                "data_description": {
+                    "roomID": "room number you want to display",
+                    "delay": "unit: minute"
+                }
+            },
+            "setOffice":{
+                "title": "Setup Office",
+                "description": "1.enter the room number\n2.enter the delay time in minutes\nWarn: the roomID should be no longer than 4 digits",
+                "data": {
+                    "roomID": "roomNr",
                     "delay": "delay in min"
+                },
+                "data_description": {
+                    "roomID": "room number you want to display",
+                    "delay": "unit: minute"
                 }
             }
-        }
     },
     "options": {
         "errors": {
@@ -37,14 +61,14 @@
         "step": {
             "init": {
                 "data": {
-                    "async_step_update_timedelay": "change timedelay",
+                    "async_step_update_timedelay": "change refresh time",
                     "async_step_add_sensors": "add other sensors",
                     "async_step_cmd":"use command topic"
                 },
                 "title": "Would you like to..."
             },
             "update_timedelay":{
-                "title": "Set timedelay",
+                "title": "Set refresh time",
 				"description": "set time delay in minutes"
             },
             "add_sensors":{
