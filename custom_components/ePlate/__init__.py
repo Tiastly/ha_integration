@@ -15,29 +15,28 @@ from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (  # PATTERN_INIT_PAYLOAD,
+    DOMAIN,
+    TOPIC_ID,
     ATTR_ROOM_ID,
     ATTR_ROOM_TYPE,
     ATTR_SENSOR_INFO,
     ATTR_SENSOR_TYPE,
     ATTR_SENSOR_UNIT,
-    DOMAIN,
-    PATTERN_BASE,
-    PATTERN_BASE_PAYLOAD,
     PATTERN_CMD,
-    PATTERN_DELAY,
     PATTERN_INIT,
-    PATTERN_MEMBER,
-    PATTERN_MEMBER_PAYLOAD,
+    PATTERN_BASE,
     PATTERN_PLAN,
-    PATTERN_PLAN_PAYLOAD,
+    PATTERN_DELAY,
     PATTERN_SENSOR,
-    TOPIC_ID,
+    PATTERN_MEMBER,
+    PATTERN_BASE_PAYLOAD,
+    PATTERN_MEMBER_PAYLOAD,
+    PATTERN_PLAN_PAYLOAD,
 )
 
 _logger = logging.getLogger(__name__)
 
-# PLATFORMS: list[Platform] = [Platform.SELECT,Platform.TEXT]
-PLATFORMS: list[Platform] = [Platform.BUTTON, Platform.TEXT]
+PLATFORMS: list[Platform] = [Platform.BUTTON, Platform.TEXT, Platform.SENSOR]
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -47,12 +46,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 
 async def load_first_info(hass: HomeAssistant, entry: ConfigEntry):
-    """first time add device"""
+    """first time add device."""
     device_registry = dr.async_get(hass)
     hass.data[DOMAIN][entry.entry_id]["device"] = device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
-        identifiers={(DOMAIN, entry.data["device"]["identifiers"])},  # NOT CHANGE!
-        # identifiers={(DOMAIN, str(entry.unique_id)+"_"+entry.data["device"]["identifiers"])},
+        identifiers={(DOMAIN, entry.data["device"]["identifiers"])},
         name=entry.data["config"][ATTR_ROOM_ID],  # roomNr
         manufacturer=entry.data["device"]["manufacturer"],
         model=entry.data["device"]["model"],
@@ -78,10 +76,10 @@ async def load_first_info(hass: HomeAssistant, entry: ConfigEntry):
         zip(
             TOPIC_ID,
             [
-                entry.data["config"],  # init payload
+                entry.data["config"],
                 entry.options.get(
                     "delay", entry.data["config"]["delay"]
-                ),  # delay payload
+                ),
                 PATTERN_BASE_PAYLOAD,
                 PATTERN_PLAN_PAYLOAD,
                 dict.fromkeys(entry.options["sensor"])
@@ -91,25 +89,22 @@ async def load_first_info(hass: HomeAssistant, entry: ConfigEntry):
         )
     )
     # init topic publish
-    await once_mqtt_publish(hass, row_topic=entry, row_payload="init",retain=False)
+    await once_mqtt_publish(hass, row_topic=entry, row_payload="init", retain=False)
     # create entity
     if entry.data["config"][ATTR_ROOM_TYPE] == 0:  # classroom
-        _logger.debug("loading class device %s", device_registry)
-        PLATFORMS.append(Platform.SENSOR)
+        _logger.debug("begin to load class device")
         change_publish_interval(
             hass, entry, timedelta(minutes=entry.data["config"]["delay"])
-        )  # classroom only need routine publish
-    else:  # office
-        _logger.debug("loading office device %s", device_registry)
+        )  # only classroom need routine publish
+    elif entry.data["config"][ATTR_ROOM_TYPE] == 1:  # office
+        _logger.debug("begin to load office device")
         hass.data[DOMAIN][entry.entry_id]["topic"]["room"] = PATTERN_MEMBER.format(
             roomID=room_id
         )
         hass.data[DOMAIN][entry.entry_id]["payload"]["room"] = PATTERN_MEMBER_PAYLOAD
 
-    # firstly add cmd control topic
     hass.async_create_task(
         hass.config_entries.async_forward_entry_setup(entry, Platform.BUTTON)
-        # hass.config_entries.async_forward_entry_setup(entry, Platform.SELECT)
     )
 
 

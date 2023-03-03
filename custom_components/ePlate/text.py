@@ -14,12 +14,12 @@ from .const import (  # ATTR_DELAY,; ATTR_DELAY_MIN,; ATTR_DELAY_MAX,
     ATTR_MAIL,
     ATTR_MEMBER_MAX,
     ATTR_MSG,
+    ATTR_MSG_INFO,
+    ATTR_MSG_TITLE,
     ATTR_NAME,
     ATTR_QR,
     ATTR_ROOM_TYPE,
     ATTR_TEL,
-    ATTR_MSG_TITLE,
-    ATTR_MSG_INFO,
     DOMAIN,
     PATTERN_BASE_PAYLOAD,
     PATTERN_MEMBER_PAYLOAD,
@@ -35,7 +35,7 @@ TEXT_TYPES = {
     #     key=ATTR_DELAY, name=ATTR_DELAY, native_min=ATTR_DELAY_MIN, native_max=ATTR_DELAY_MAX,
     # ),
     ATTR_QR: TextEntityDescription(
-        key=ATTR_QR,name=ATTR_QR, native_min=0, native_max=50
+        key=ATTR_QR, name=ATTR_QR, native_min=0, native_max=50
     ),
     ATTR_DIS: TextEntityDescription(
         key=ATTR_DIS, name=ATTR_DIS, native_min=0, native_max=50
@@ -82,11 +82,7 @@ async def async_setup_entry(
         ]
     )
 
-    if room_type == 0:  # contiue to add lecture
-        hass.async_create_task(
-            hass.config_entries.async_forward_entry_setup(entry, Platform.SENSOR)
-        )
-    elif room_type == 1:  # contiue to add member
+    if room_type == 1:  # contiue to add member
         for member_bit in range(1, ATTR_MEMBER_MAX + 1):
             async_add_entities(
                 [
@@ -101,22 +97,25 @@ async def async_setup_entry(
                 ]
             )
         async_add_entities(
-                [
-                    MSGInfoText(
-                        hass=hass,
-                        device=device,
-                        info_type=itype,
-                        data_package=data_package,
-                    )
-                    for itype in PATTERN_MSG_PAYLOAD
-                ]
-            )
+            [
+                MSGInfoText(
+                    hass=hass,
+                    device=device,
+                    info_type=itype,
+                    data_package=data_package,
+                )
+                for itype in PATTERN_MSG_PAYLOAD
+            ]
+        )
+
+    hass.async_create_task(
+            hass.config_entries.async_forward_entry_setup(entry, Platform.SENSOR)
+        )
     return True
 
 
 class InfoText(TextEntity):
     """parent class for all text entities."""
-    # todo change stuct
     def __init__(self, hass, device, info_type: str, data_package) -> None:
         """Initialize the text."""
         self._hass = hass
@@ -130,21 +129,17 @@ class InfoText(TextEntity):
             "model": device.model,
             "sw_version": device.sw_version,
         }
+        self._attr_native_value = "(null)"
         self.entity_description = TEXT_TYPES[self._info_type]
 
-    @property
-    def native_value(self) -> str:
-        """Return the state of the sensor."""
-        return ""
 
     @property
     def unique_id(self) -> str:
-        """Return the unique ID of the sensor."""
+        """Return a unique ID."""
         return f"{self.name}"
-
-    # @property
-    # def name(self) -> str:
-    #     return f"{self._device.name}_{self._info_type}"
+    @property
+    def name(self) -> str:
+        return f"{self._device.name}_{self._info_type}"
 
 
 class BasicInfoText(InfoText):
@@ -156,10 +151,13 @@ class BasicInfoText(InfoText):
         #   pattern="[a-zA-z]+://[^\s]*", string=value
         # ):
         #   raise ValueError("invalid url")
-
-        self._data_package["payload"]["base"][self._info_type] = value
-        _logger.debug("topic:%s\npayload:%s",self._data_package["topic"]["base"],self._data_package["payload"]["base"])
+        _logger.debug(
+            "topic:%s\npayload:%s",
+            self._data_package["topic"]["base"],
+            self._data_package["payload"]["base"],
+        )
         try:
+            self._data_package["payload"]["base"][self._info_type] = value
             await mqtt.async_publish(
                 hass=self._hass,
                 topic=self._data_package["topic"]["base"],
@@ -170,8 +168,9 @@ class BasicInfoText(InfoText):
         except Exception as err:
             _logger.error(err)
 
+
 class MSGInfoText(InfoText):
-   
+
     async def async_set_value(self, value: str) -> None:
         PATTERN_MSG_PAYLOAD[self.name] = value
         try:
@@ -209,12 +208,12 @@ class MemberInfoText(InfoText):
             raise ValueError("invalid mail")
         member = self._data_package["payload"]["room"][self._member_bit]
         member[self._info_type] = value
-        _logger.debug({self._member_bit:member})
+        _logger.debug({self._member_bit: member})
         try:
             await mqtt.async_publish(
                 hass=self._hass,
                 topic=self._data_package["topic"]["room"],
-                payload={self._member_bit:member},
+                payload={self._member_bit: member},
                 qos=0,
                 retain=True,
             )

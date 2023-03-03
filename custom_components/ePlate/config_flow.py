@@ -7,25 +7,25 @@ import re
 from typing import Any
 
 import voluptuous as vol
+
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.service_info.mqtt import MqttServiceInfo
 
-from .const import (
-    DOMAIN,
-    CMD_TYPE,
-    # ROOM_TYPE,
-    SUPPLY_TYPE,
+from .const import (  # ROOM_TYPE,
     ATTR_DELAY,
-    ATTR_ROOM_ID,
-    ATTR_SUPPLY,
-    ATTR_ROOM_TYPE,
-    ATTR_DELAY_MIN,
     ATTR_DELAY_MAX,
+    ATTR_DELAY_MIN,
+    ATTR_ROOM_ID,
+    ATTR_ROOM_TYPE,
     ATTR_SENSOR_MAX,
+    ATTR_SUPPLY,
+    CMD_TYPE,
+    DOMAIN,
     PATTERN_INIT_PAYLOAD,
+    SUPPLY_TYPE,
 )
 from .roomlist import ROOM_LIST
 
@@ -79,7 +79,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     "manufacturer": "Wareshare",
                     "model": "EPD7IN5",
                     "name": "1",
-                    "sw_version": "1.0"
+                    "sw_version": "1.0",
                 }
                 return await self.async_step_setType()
             errors["base"] = "invalid id"
@@ -113,14 +113,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             self._room_id = user_input["roomID"]
             for sensor in self.hass.states.async_entity_ids("sensor"):
-                if f"sensor.{self._room_id}_display" == sensor:
+                if re.match(f"sensor.{self._room_id.lower()}_(current|next|display)", sensor):
                     errors["base"] = "sensor_exists"
                     break
-            self._data["config"][ATTR_ROOM_TYPE] = 0
-            self._data["config"][ATTR_ROOM_ID] = user_input["roomID"][:4]
-            self._data["config"][ATTR_DELAY] = user_input["delay"]
-            self._data["config"][ATTR_SUPPLY] = user_input["supply"]
-            return await self.async_step_confirm()
+                self._data["config"][ATTR_ROOM_TYPE] = 0
+                self._data["config"][ATTR_ROOM_ID] = user_input["roomID"][:4]
+                self._data["config"][ATTR_DELAY] = user_input["delay"]
+                self._data["config"][ATTR_SUPPLY] = user_input["supply"]
+                return await self.async_step_confirm()
 
         return self.async_show_form(
             step_id="setClass",
@@ -130,7 +130,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required("delay", default=5): vol.All(
                         int, vol.Range(min=ATTR_DELAY_MIN, max=ATTR_DELAY_MAX)
                     ),
-                    vol.Required("supply", default=1): vol.In(SUPPLY_TYPE),
+                    vol.Required("supply", default=0): vol.In(SUPPLY_TYPE),
                 }
             ),
             errors=errors,
@@ -143,15 +143,18 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             self._room_id = user_input["roomID"]
             for sensor in self.hass.states.async_entity_ids("sensor"):
-                if f"sensor.{self._room_id}_display" == sensor:
+                if re.match(f"sensor.{self._room_id.lower()}_(current|next|display)", sensor):
                     errors["base"] = "sensor_exists"
                     break
-            if len(user_input["roomID"]) < 5:
+                if len(user_input["roomID"]) > 4:
+                    errors["base"] = "invalid room"
+                    break
+
                 self._data["config"][ATTR_ROOM_TYPE] = 1
-                self._data["config"][ATTR_ROOM_ID] = user_input["roomID"]
+                self._data["config"][ATTR_ROOM_ID] = str(user_input["roomID"])
                 self._data["config"][ATTR_DELAY] = user_input["delay"]
                 return await self.async_step_confirm()
-            errors["base"] = "invalid room"
+
 
         return self.async_show_form(
             step_id="setOffice",
@@ -161,9 +164,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required("delay", default=5): vol.All(
                         int, vol.Range(min=ATTR_DELAY_MIN, max=ATTR_DELAY_MAX)
                     ),
-                    vol.Required("supply", default=1): vol.In(SUPPLY_TYPE),
+                    vol.Required("supply", default=0): vol.In(SUPPLY_TYPE),
                 }
             ),
+            errors=errors,
         )
 
     async def async_step_confirm(self, user_input=None) -> FlowResult:
@@ -277,7 +281,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             ),
         )
 
-    async def async_finish(self, user_input=None)-> FlowResult:
+    async def async_finish(self, user_input=None) -> FlowResult:
         """finish."""
         if self._data is not None:
             return self.async_create_entry(title="", data=self._data)

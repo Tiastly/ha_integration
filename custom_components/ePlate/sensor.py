@@ -1,27 +1,35 @@
 """classroom platform."""
 from __future__ import annotations
 
-from datetime import timedelta, timezone
 import logging
-from typing import Any
-
+from datetime import timedelta
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import Entity
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.components import mqtt
+from homeassistant.components.mqtt.subscription import (
+    async_prepare_subscribe_topics,
+    async_subscribe_topics,
+    async_unsubscribe_topics,
+)
 from homeassistant.helpers.event import async_track_time_interval
-import homeassistant.util.dt as dt_util
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.components.binary_sensor import (
+    BinarySensorEntity,
+    BinarySensorDeviceClass,
+)
 
 from .const import (
     ATTR_DELAY_MIN,
+    ATTR_ROOM_TYPE,
     ATTR_INFO,
     ATTR_LECT,
     ATTR_TIME,
     DOMAIN,
     LECT_TYPE,
     PATTERN_PLAN_SUB_PAYLOAD,
-    TIME_SHIFT,
+    PATTERN_STATE,
 )
 from .scrap import ClassroomData
 
@@ -34,34 +42,101 @@ async def async_setup_entry(
     """Setup sensors from a config entry created in the integrations UI."""
     data_package = hass.data[DOMAIN][entry.entry_id]
     device = data_package["device"]
-    # delay = data_package["payload"][TOPIC_ID[0]][ATTR_DELAY]
-    delay = ATTR_DELAY_MIN
+    room_type = data_package["payload"]["init"][ATTR_ROOM_TYPE]
     if device is None:
         return False
-    session = async_get_clientsession(hass)
-    classroom = ClassroomData(
-        session=session,
-        location=device.name,
-        time_interval=delay,
+    async_add_entities(
+        [
+            DeviceSensor(
+                hass=hass,
+                device=device,
+            )
+        ]
     )
-    lectures = [
-        LectureEntity(
-            hass=hass,
-            classroom=classroom,
-            lect_type=lect,
-            time_interval=timedelta(minutes=delay),
-            device=device,
-            data_package=data_package,
+
+    if room_type == 0:  # contiue to add lecture
+        session = async_get_clientsession(hass)
+        classroom = ClassroomData(
+            session=session,
+            location=device.name,
+            time_interval=ATTR_DELAY_MIN,
         )
-        for lect in LECT_TYPE
-    ]
-    for lect in lectures:
-        await lect.async_update_lect()
-        
-    async_add_entities(lectures)
-    _logger.debug("init sensor finished")
+        lectures = [
+            LectureEntity(
+                hass=hass,
+                classroom=classroom,
+                lect_type=lect,
+                time_interval=timedelta(minutes=ATTR_DELAY_MIN),
+                device=device,
+                data_package=data_package,
+            )
+            for lect in LECT_TYPE
+        ]
+        for lect in lectures:
+            await lect.async_update_lect()
+
+        async_add_entities(lectures)
+    _logger.debug("init finished")
     return True
 
+
+class DeviceSensor(BinarySensorEntity):
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        device,
+    ):
+        self._hass = hass
+        self._device = device
+        self._attr_device_info = {
+            "identifiers": device.identifiers,
+            "name": device.name,
+            "manufacturer": device.manufacturer,
+            "model": device.model,
+            "sw_version": device.sw_version,
+        }
+        self._attr_device_class = BinarySensorDeviceClass.RUNNING
+        self._attr_is_on = True
+        self._listeners = {}
+    @property
+    def unique_id(self) -> str:
+        return self.name
+
+    @property
+    def name(self) -> str:
+        return f"{self._device.name}_display"
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to device status."""
+        @callback
+        def update(message)->None:
+            """update status."""
+            _logger.debug("update %s",message.payload)
+            if message.payload == "online":
+                self._attr_is_on = True
+            elif message.payload == "offline":
+                self._attr_is_on = False
+            else:
+                assert False, f"unknown satatus {message.payload}"
+
+        self._listeners = async_prepare_subscribe_topics(
+            self.hass,
+            self._listeners,
+            {
+                f"{self.unique_id}-state": {
+                    "topic": PATTERN_STATE.format(roomID = self._device.name),
+                    "msg_callback": update,
+                    "qos": 0,
+                },
+            },
+        )
+
+        await async_subscribe_topics(self.hass, self._listeners)
+
+
+    async def async_will_remove_from_hass(self) -> None:
+        if self._listeners is not None:
+            async_unsubscribe_topics(self.hass, self._listeners)
 
 class LectureEntity(Entity):
     """each lecture+lecture_info+rest/beginTime."""
@@ -109,15 +184,13 @@ class LectureEntity(Entity):
         return self._state
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str]:
         return self._attrs
 
     async def async_update_lect(self) -> None:
         """update the sensor infomations."""
         await self._data.async_update()
-        self._state = dt_util.now(timezone(offset=TIME_SHIFT)).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+        self._state = self._data.now.strftime("%Y-%m-%d %H:%M:%S")
         # self._state = self._data.now_time#update time
         if self._lect_type == 0:
             self._attrs[ATTR_TIME] = self._data.rest_time

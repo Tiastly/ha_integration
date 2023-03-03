@@ -31,15 +31,17 @@ the information consist of 3 parts,
 - [x] add: additionally message block for office type 
 - [ ] fix: illegal Manual entry-code 
 - [ ] fix: keep member after restart
-- [ ] fix: empty text
-- [ ] update: entity struct
+- [ ] fix: msg payload
+
+- [x] fix: empty text
+- [ ] fix: entity struct
 - [ ] update: member payload
 - [ ] UI Guide
   - [x] update: Modiauswahl 
   - [ ] add: Sensorauswahl
 
 - [x] add: add device manually
-- [ ] add: device status
+- [x] add: device status
 - [ ] test files
 
 ~~Studienarbeit verfassen~~

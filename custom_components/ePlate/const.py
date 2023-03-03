@@ -1,11 +1,7 @@
 """Constants for the ePlate integration."""
-from datetime import timedelta
-
-tTime = "2023-3-1T6:57:00.000Z"  # basic_time only for test
-
 DOMAIN ="ePlate"
 # DOMAIN = "scheduletracker"
-TIME_SHIFT = timedelta(hours=1)
+TIME_ZONE = "europe/berlin"
 BASE_API_URL = "https://spluseins.de/api/splus"
 
 # types
@@ -51,7 +47,7 @@ DISCOVERY_PAYLOAD = {
         "manufacturer": "WaveShare",
         "model": "EPD7IN5",
         "name": "1",
-        "sw_version": "1.0"
+        "sw_version": "1.0",
     },
 }
 TOPIC_ID = ["init", "delay", "base", "room", "sensor"]
@@ -59,21 +55,21 @@ TOPIC_ID = ["init", "delay", "base", "room", "sensor"]
 PATTERN_INIT = "/ePlate/{unique_id}/init/"
 PATTERN_DELAY = "/ePlate/{roomID}/refreshTime"
 PATTERN_BASE = "/ePlate/{roomID}/baseInfo"
-# PATTERN_BASE_STATE = "/ePlate/{roomID}/state"
+PATTERN_STATE = "/ePlate/{roomID}/status"
 PATTERN_CMD_FRESH = "/ePlate/{roomID}/refresh"
 PATTERN_CMD_CLEAR = "/ePlate/{roomID}/clear"
 PATTERN_CMD_RESET = "/ePlate/{roomID}/factoryReset"
 PATTERN_CMD = [PATTERN_CMD_FRESH, PATTERN_CMD_CLEAR, PATTERN_CMD_RESET]
 PATTERN_PLAN = "/ePlate/{roomID}/plannung"
 PATTERN_MEMBER = "/ePlate/{roomID}/member"
-PATTERN_MSG = "/ePlate/{roomID}/message" # special for office
+PATTERN_MSG = "/ePlate/{roomID}/message"  # special for office
 PATTERN_SENSOR = "/ePlate/{roomID}/sensor"
 # payload-patterns
 PATTERN_INIT_PAYLOAD = {  # from init
     ATTR_ROOM_ID: str,
     ATTR_ROOM_TYPE: ROOM_TYPE,
     ATTR_DELAY: int,
-    ATTR_SUPPLY: int
+    ATTR_SUPPLY: int,
 }
 # only numbers
 PATTERN_DELAY_PAYLOAD = {
@@ -127,6 +123,8 @@ PATTERN_MEMBER_PAYLOAD = {  # str
         ATTR_MAIL: "",
         ATTR_MSG: "",
     },
+    # PATTERN_MSG_PAYLOAD   # str
+
 }
 PATTERN_MSG_PAYLOAD = {  # str
     ATTR_MSG_TITLE: "",

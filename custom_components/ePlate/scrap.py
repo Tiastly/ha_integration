@@ -10,10 +10,10 @@ import aiofiles
 import aiohttp
 import dateutil.parser
 
-from .const import BASE_API_URL, TIME_SHIFT, tTime
+from .const import BASE_API_URL
 from .studenplan import STUDEN_PLAN
 
-# from homeassistant.util.dt import now
+from homeassistant.util.dt import now
 
 
 _logger = logging.getLogger(__name__)
@@ -24,8 +24,8 @@ _logger = logging.getLogger(__name__)
 class Scrap:
     """scrap the classinfomation."""
 
-    def __init__(self, session, now, location=None):
-        self._now = now
+    def __init__(self, session, location=None):
+        self._now = now()
         self._session = session
         # self._lo = location
 
@@ -51,7 +51,7 @@ class Scrap:
                         # only scrap todays lectures
                         if (
                             lecture["start"][:10]
-                            == (self._now.date() + TIME_SHIFT).isoformat()
+                            == (self._now.date()).isoformat()
                         ):
                             if "id" and "meta" and "duration" in lecture:
                                 lecture.pop("id")
@@ -161,9 +161,7 @@ class ClassroomData:
 
     def __init__(self, session, location, time_interval):
         self._lo = location
-        # WARN test only
-        self._now = dateutil.parser.parse(tTime)
-        # self._now = None
+        self._now = None
         self._session = session
         self._lect = {
             "title": 0,
@@ -181,19 +179,14 @@ class ClassroomData:
 
     @property
     def now(self):
-        """current time."""
-        # return dt_util.now(timezone(offset=TIME_SHIFT))
+        """update current time."""
+        self._now = now()
         return self._now
 
     @property
     def locations(self):
         """roomName."""
         return self._lo
-
-    @property
-    def now_time(self):
-        """current time."""
-        return self._now
 
     @property
     def curr_lecture(self):
@@ -293,10 +286,7 @@ class ClassroomData:
 
     async def async_update(self):
         """update the infomation in time_interval."""
-        self._now += datetime.timedelta(minutes=self._time_interval)
-        _logger.debug(
-            "now:%s,curr:%s,next%s", self._now, self.curr_lecture, self._next_lect
-        )
+        _logger.debug("now:%s,curr:%s,next%s", self._now, self.curr_lecture, self._next_lect)
         # time here means current time
         # if any lecture has been scheduled
         # then not need to update the whole lecture, rather the rest of both time
@@ -317,9 +307,7 @@ class ClassroomData:
         # update_time == 0, update the timetable/lect, otherwise will only update rest_time
         _logger.debug("Update from lect%s,location%s", self._now, self._lo)
 
-        location_plan = await Scrap(
-            now=self._now, session=self._session, location=self._lo
-        ).lookup_location(self._lo)
+        location_plan = await Scrap(session=self._session).lookup_location(self._lo)
 
         def positing():
             cur = None
