@@ -2,28 +2,28 @@
 import logging
 import re
 
-from homeassistant.components import mqtt
-from homeassistant.components.text import TextEntity, TextEntityDescription
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
+from homeassistant.components import mqtt
 from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.components.text import TextEntity, TextEntityDescription
 
 from .const import (  # ATTR_DELAY,; ATTR_DELAY_MIN,; ATTR_DELAY_MAX,
+    DOMAIN,
     ATTR_DIS,
     ATTR_MAIL,
-    ATTR_MEMBER_MAX,
     ATTR_MSG,
-    ATTR_MSG_INFO,
-    ATTR_MSG_TITLE,
     ATTR_NAME,
     ATTR_QR,
-    ATTR_ROOM_TYPE,
     ATTR_TEL,
-    DOMAIN,
+    PATTERN_MSG,
+    ATTR_MSG_INFO,
+    ATTR_MSG_TITLE,
+    ATTR_ROOM_TYPE,
+    ATTR_MEMBER_MAX,
     PATTERN_BASE_PAYLOAD,
     PATTERN_MEMBER_PAYLOAD,
-    PATTERN_MSG,
     PATTERN_MSG_PAYLOAD,
 )
 
@@ -109,13 +109,14 @@ async def async_setup_entry(
         )
 
     hass.async_create_task(
-            hass.config_entries.async_forward_entry_setup(entry, Platform.SENSOR)
-        )
+        hass.config_entries.async_forward_entry_setup(entry, Platform.BINARY_SENSOR)
+    )
     return True
 
 
 class InfoText(TextEntity):
     """parent class for all text entities."""
+
     def __init__(self, hass, device, info_type: str, data_package) -> None:
         """Initialize the text."""
         self._hass = hass
@@ -132,11 +133,11 @@ class InfoText(TextEntity):
         self._attr_native_value = "(null)"
         self.entity_description = TEXT_TYPES[self._info_type]
 
-
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
         return f"{self.name}"
+
     @property
     def name(self) -> str:
         return f"{self._device.name}_{self._info_type}"
@@ -170,14 +171,13 @@ class BasicInfoText(InfoText):
 
 
 class MSGInfoText(InfoText):
-
     async def async_set_value(self, value: str) -> None:
-        PATTERN_MSG_PAYLOAD[self.name] = value
         try:
+            self._data_package["payload"]["room"]["message"][self._info_type] = value
             await mqtt.async_publish(
                 hass=self._hass,
                 topic=PATTERN_MSG.format(roomID=self._attr_device_info["name"]),
-                payload=PATTERN_MSG_PAYLOAD,
+                payload=self._data_package["payload"]["room"]["message"],
                 qos=0,
                 retain=False,
             )
@@ -212,7 +212,7 @@ class MemberInfoText(InfoText):
         try:
             await mqtt.async_publish(
                 hass=self._hass,
-                topic=self._data_package["topic"]["room"],
+                topic=self._data_package["topic"]["room"] + "/" + self._member_bit,
                 payload={self._member_bit: member},
                 qos=0,
                 retain=True,

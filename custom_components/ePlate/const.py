@@ -60,6 +60,7 @@ PATTERN_CMD_FRESH = "/ePlate/{roomID}/refresh"
 PATTERN_CMD_CLEAR = "/ePlate/{roomID}/clear"
 PATTERN_CMD_RESET = "/ePlate/{roomID}/factoryReset"
 PATTERN_CMD = [PATTERN_CMD_FRESH, PATTERN_CMD_CLEAR, PATTERN_CMD_RESET]
+PATTERN_CMD_GLOBAL = ["/ePlate/refresh","/ePlate/clear", "/ePlate/factoryReset"]
 PATTERN_PLAN = "/ePlate/{roomID}/plannung"
 PATTERN_MEMBER = "/ePlate/{roomID}/member"
 PATTERN_MSG = "/ePlate/{roomID}/message"  # special for office
@@ -104,6 +105,10 @@ PLAN_PAYLOAD = {
 #     ATTR_MAIL: str,
 #     ATTR_MSG: str,
 # }
+PATTERN_MSG_PAYLOAD = {  # str
+    ATTR_MSG_TITLE: "",
+    ATTR_MSG_INFO: "",
+}
 PATTERN_MEMBER_PAYLOAD = {  # str
     "member1": {
         ATTR_NAME: "",
@@ -123,13 +128,10 @@ PATTERN_MEMBER_PAYLOAD = {  # str
         ATTR_MAIL: "",
         ATTR_MSG: "",
     },
-    # PATTERN_MSG_PAYLOAD   # str
+    "message":PATTERN_MSG_PAYLOAD
 
 }
-PATTERN_MSG_PAYLOAD = {  # str
-    ATTR_MSG_TITLE: "",
-    ATTR_MSG_INFO: "",
-}
+
 # max 3 sensors
 PATTERN_SENSOR_PAYLOAD = {
     ATTR_SENSOR: {

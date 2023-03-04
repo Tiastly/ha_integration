@@ -11,21 +11,22 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
-import homeassistant.helpers.config_validation as cv
+
+# import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.service_info.mqtt import MqttServiceInfo
 
-from .const import (  # ROOM_TYPE,
+from .const import (
+    DOMAIN,
+    CMD_TYPE,
+    SUPPLY_TYPE,
     ATTR_DELAY,
+    ATTR_SUPPLY,
+    ATTR_ROOM_ID,
     ATTR_DELAY_MAX,
     ATTR_DELAY_MIN,
-    ATTR_ROOM_ID,
     ATTR_ROOM_TYPE,
-    ATTR_SENSOR_MAX,
-    ATTR_SUPPLY,
-    CMD_TYPE,
-    DOMAIN,
+    # ATTR_SENSOR_MAX,
     PATTERN_INIT_PAYLOAD,
-    SUPPLY_TYPE,
 )
 from .roomlist import ROOM_LIST
 
@@ -112,10 +113,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
         if user_input is not None:
             self._room_id = user_input["roomID"]
-            for sensor in self.hass.states.async_entity_ids("sensor"):
-                if re.match(f"sensor.{self._room_id.lower()}_(current|next|display)", sensor):
+            for sensor in self.hass.states.async_entity_ids("binary_sensor"):
+                if re.match(f"binary_sensor.{self._room_id.lower()}_display", sensor):
                     errors["base"] = "sensor_exists"
                     break
+            else:
                 self._data["config"][ATTR_ROOM_TYPE] = 0
                 self._data["config"][ATTR_ROOM_ID] = user_input["roomID"][:4]
                 self._data["config"][ATTR_DELAY] = user_input["delay"]
@@ -142,19 +144,19 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
         if user_input is not None:
             self._room_id = user_input["roomID"]
-            for sensor in self.hass.states.async_entity_ids("sensor"):
-                if re.match(f"sensor.{self._room_id.lower()}_(current|next|display)", sensor):
+            for sensor in self.hass.states.async_entity_ids("binary_sensor"):
+                if re.match(f"binary_sensor.{self._room_id.lower()}_display", sensor):
                     errors["base"] = "sensor_exists"
                     break
-                if len(user_input["roomID"]) > 4:
-                    errors["base"] = "invalid room"
-                    break
+            else:
+                if len(user_input["roomID"]) < 5:
+                    self._data["config"][ATTR_ROOM_TYPE] = 1
+                    self._data["config"][ATTR_ROOM_ID] = str(user_input["roomID"])
+                    self._data["config"][ATTR_DELAY] = user_input["delay"]
+                    self._data["config"][ATTR_SUPPLY] = user_input["supply"]
+                    return await self.async_step_confirm()
 
-                self._data["config"][ATTR_ROOM_TYPE] = 1
-                self._data["config"][ATTR_ROOM_ID] = str(user_input["roomID"])
-                self._data["config"][ATTR_DELAY] = user_input["delay"]
-                return await self.async_step_confirm()
-
+                errors["base"] = "invalid room"
 
         return self.async_show_form(
             step_id="setOffice",
@@ -244,24 +246,57 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         # add some regex to filter out other sensors
         for sensor in self.hass.states.async_entity_ids("sensor"):
             _logger.debug(sensor)
-            if not re.match(pattern="sensor.*_(current|next|display)", string=sensor):
+            if not re.match(pattern="sensor.*_(current|next)", string=sensor):
                 all_sensors.append(sensor)
-        all_sensors.sort()
-        all_sensors.append("delete all sensors")
+        # all_sensors.sort()
+        all_sensors.append("delete")
+        # if user_input:
+        #     if len(user_input["sensor"]) > ATTR_SENSOR_MAX:
+        #         errors["base"] = "too_many_sensors"
+        #     else:
+        #         self._data["sensor"] = user_input["sensor"]
+        #         return await self._steps.pop(0)
+
+        # return self.async_show_form(
+        #     step_id="add_sensors",
+        #     data_schema=vol.Schema(
+        #         {
+        #             vol.Required(
+        #                 "sensor", default=self._data["sensor"]
+        #             ): cv.multi_select(all_sensors),
+        #         }
+        #     ),
+        #     errors=errors,
+        # )
+        selected_sensors = dict(
+            zip(
+                ["sensor1", "sensor2", "sensor3"],
+                self._data["sensor"] + [""] * (3 - len(self._data["sensor"]))
+                if self._data["sensor"]
+                else [""] * 3,
+            )
+        )
+        sensor_data = []
         if user_input:
-            if len(user_input["sensor"]) > ATTR_SENSOR_MAX:
-                errors["base"] = "too_many_sensors"
+            for sensor in user_input.values():
+                if sensor == "":
+                    continue
+                if sensor not in all_sensors:
+                    errors["base"] = "not found"
+                    break
+
+                sensor_data.append(sensor)
             else:
-                self._data["sensor"] = user_input["sensor"]
+                self._data["sensor"] = list(set(sensor_data))
                 return await self._steps.pop(0)
 
         return self.async_show_form(
             step_id="add_sensors",
             data_schema=vol.Schema(
                 {
-                    vol.Required(
-                        "sensor", default=self._data["sensor"]
-                    ): cv.multi_select(all_sensors),
+                    vol.Required("sensor1", default=selected_sensors["sensor1"]): str,
+                    vol.Optional("sensor2", default=selected_sensors["sensor2"]): str,
+                    vol.Optional("sensor3", default=selected_sensors["sensor3"]): str,
                 }
             ),
             errors=errors,

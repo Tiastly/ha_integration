@@ -31,14 +31,14 @@ the information consist of 3 parts,
 - [x] add: additionally message block for office type 
 - [ ] fix: illegal Manual entry-code 
 - [ ] fix: keep member after restart
-- [ ] fix: msg payload
+- [x] fix: msg payload
 
 - [x] fix: empty text
-- [ ] fix: entity struct
-- [ ] update: member payload
+- [x] fix: entity struct
+- [x] update: member payload
 - [ ] UI Guide
   - [x] update: Modiauswahl 
-  - [ ] add: Sensorauswahl
+  - [x] add: Sensorauswahl
 
 - [x] add: add device manually
 - [x] add: device status

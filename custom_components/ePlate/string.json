@@ -1,58 +1,90 @@
 {
-  "config": {
-    "flow_title": "E-Ink_Contoller",
-    "abort": {
-      "single_instance_allowed": "too fast, wait a monent",
-      "not_allowed": "this intergration use MQTT discovery ONLY",
-      "already_configured": "registered device, delete first",
-      "invalid room": "room not in roomlist",
-      "invalid": "room type and room number not match",
-      "no_data": 42
-    },
-    "errors": {
-      "invalid room": "room not in roomlist"
-    },
-    "step": {
-      "user": {
-        "title": "Test entry",
-        "description": "This is a test entrance, with this you can creat a fake new display"
-      },
-      "settings": {
-        "title": "Display  Settings",
-        "description": "This set the roominfomation about this display \n1. select room types \n2. enter supported rooms \n3.move the scrollbar to choose the refreshTime\n4. click next to continue",
-        "data": {
-          "roomtype": "roomType",
-          "roomID": "roomNr",
-          "delay": "delay_min"
-        }
-      }
-    }
-  },
-  "options": {
-    "errors": {
-      "too_many_sensors": "you can only choose maximum 3 sensors"
-    },
-    "step": {
-      "init": {
-        "data": {
-          "async_step_update_timedelay": "change timedelay",
-          "async_step_add_sensors": "add other sensors",
-          "async_step_cmd": "use command topic"
+    "config": {
+        "flow_title": "E-Ink_Controller",
+        "abort": {
+            "not_allowed":"this integration use MQTT discovery ONLY",
+            "already_configured":"registered device, delete first",
+            "invalid room": "room not in room list",
+            "invalid":"room type and room number not match",
+            "no_data":42
         },
-        "title": "Would you like to..."
-      },
-      "update_timedelay": {
-        "title": "Set timedelay",
-        "description": "set time delay in minutes"
-      },
-      "add_sensors": {
-        "title": "Add other sensors",
-        "description": "Select sensors to add to the display,you can maximum add 3 sensors"
-      },
-      "cmd": {
-        "title": "Select command topic",
-        "description": "there are 3 commands, you can only choose one of them"
-      }
+        "errors": {
+            "invalid id": "Invalid identifiers, please check code on display again",
+            "invalid room": "roomID not supported",
+            "sensor_exists": "roomID already exists"
+
+        },
+        "step": {
+            "user":{
+                "title": "Manual Setup",
+                "description": "please add the 4 bit code on display to continue"
+            },
+            "setType": {
+                "title": "Display type setting",
+                "description": "firstly, please select the type of display",
+                "menu_options":
+                    {
+                        "setClass": "Classroom type",
+                        "setOffice": "Office type"
+                    }
+                }
+            },
+            "setClass":{
+                "title": "Setup Classroom",
+                "description": "1. select the supported roomID\n2. enter the delay time in minutes\n",
+                "data": {
+                    "roomID": "roomNr",
+                    "delay": "refresh time"
+                },
+                "data_description": {
+                    "roomID": "room number you want to display",
+                    "delay": "unit: minute"
+                }
+            },
+            "setOffice":{
+                "title": "Setup Office",
+                "description": "1.enter the room number\n2.enter the delay time in minutes\nWarn: the roomID should be no longer than 4 digits",
+                "data": {
+                    "roomID": "roomNr",
+                    "delay": "delay in min"
+                },
+                "data_description": {
+                    "roomID": "room number you want to display",
+                    "delay": "unit: minute"
+                }
+            }
+    },
+    "options": {
+        "errors": {
+            "too_many_sensors":"you can only choose maximum 3 sensors",
+            "not found":"sensor not found, please check again"
+        },
+        "step": {
+            "init": {
+                "data": {
+                    "async_step_update_timedelay": "change refresh time",
+                    "async_step_add_sensors": "add other sensors",
+                    "async_step_cmd":"Global command topic"
+                },
+                "title": "Would you like to..."
+            },
+            "update_timedelay":{
+                "title": "Set refresh time",
+				"description": "set time delay in minutes"
+            },
+            "add_sensors":{
+                "title": "Add other sensors",
+                "description": "Select sensors to add to the display,you can maximum add 3 sensors\n Tips: to delete all sensors, please enter 'delete' in any sensor field.",
+                "data": {
+                    "sensor1": "sensor1",
+                    "sensor2": "sensor2",
+                    "sensor3": "sensor3"
+                }
+            },
+            "cmd":{
+                "title": "Select GLOBAL command topic",
+                "description": "Here are the commands for ALL displays. If you want to control ONE display, please use BUTTON on device settings"
+            }
+        }
     }
-  }
 }

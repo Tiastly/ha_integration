@@ -56,14 +56,15 @@
     },
     "options": {
         "errors": {
-            "too_many_sensors":"you can only choose maximum 3 sensors"
+            "too_many_sensors":"you can only choose maximum 3 sensors",
+            "not found":"sensor not found, please check again"
         },
         "step": {
             "init": {
                 "data": {
                     "async_step_update_timedelay": "change refresh time",
                     "async_step_add_sensors": "add other sensors",
-                    "async_step_cmd":"use command topic"
+                    "async_step_cmd":"Global command topic"
                 },
                 "title": "Would you like to..."
             },
@@ -73,11 +74,16 @@
             },
             "add_sensors":{
                 "title": "Add other sensors",
-                "description": "Select sensors to add to the display,you can maximum add 3 sensors"
+                "description": "Select sensors to add to the display,you can maximum add 3 sensors\n Tips: to delete all sensors, please enter 'delete' in any sensor field.",
+                "data": {
+                    "sensor1": "sensor1",
+                    "sensor2": "sensor2",
+                    "sensor3": "sensor3"
+                }
             },
             "cmd":{
-                "title": "Select command topic",
-                "description": "there are 3 commands, you can only choose one of them"
+                "title": "Select GLOBAL command topic",
+                "description": "Here are the commands for ALL displays. If you want to control ONE display, please use BUTTON on device settings"
             }
         }
     }
