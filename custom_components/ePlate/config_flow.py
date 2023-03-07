@@ -1,9 +1,9 @@
 """Config flow for ePlate."""
 from __future__ import annotations
 
+import re
 import json
 import logging
-import re
 from typing import Any
 
 import voluptuous as vol
@@ -12,7 +12,7 @@ from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 
-# import homeassistant.helpers.config_validation as cv
+import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.service_info.mqtt import MqttServiceInfo
 
 from .const import (
@@ -25,7 +25,8 @@ from .const import (
     ATTR_DELAY_MAX,
     ATTR_DELAY_MIN,
     ATTR_ROOM_TYPE,
-    # ATTR_SENSOR_MAX,
+    ATTR_SENSOR_MAX,
+    ATTR_DEFAULT_DELAY,
     PATTERN_INIT_PAYLOAD,
 )
 from .roomlist import ROOM_LIST
@@ -74,7 +75,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
         if user_input is not None:
             if len(user_input["identifiers"]) == 4:
-                self._data["unique_id"] = user_input["identifiers"]
+                self._data["unique_id"] = "EinkDoorPlate-" + user_input["identifiers"]
                 self._data["device"] = {
                     "identifiers": user_input["identifiers"],
                     "manufacturer": "Wareshare",
@@ -102,9 +103,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_menu(
             step_id="setType",
             menu_options=["setClass", "setOffice"],
-            # description_placeholders={
-            #     "model": "Example model",
-            # }
         )
 
     async def async_step_setClass(
@@ -118,20 +116,24 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     errors["base"] = "sensor_exists"
                     break
             else:
-                self._data["config"][ATTR_ROOM_TYPE] = 0
-                self._data["config"][ATTR_ROOM_ID] = user_input["roomID"][:4]
-                self._data["config"][ATTR_DELAY] = user_input["delay"]
-                self._data["config"][ATTR_SUPPLY] = user_input["supply"]
-                return await self.async_step_confirm()
+                if len(user_input["roomID"]) < 5:
+                    self._data["config"][ATTR_ROOM_TYPE] = 0
+                    self._data["config"][ATTR_ROOM_ID] = user_input["roomID"][:4]
+                    if supply := user_input["supply"]:
+                        self._data["config"][ATTR_SUPPLY] = supply
+                        self._data["config"][ATTR_DELAY] = ATTR_DEFAULT_DELAY
+                    else:
+                        self._data["config"][ATTR_SUPPLY] = supply
+                        return await self.async_step_refreshTime()
+                    return await self.async_step_confirm()
+
+                errors["base"] = "invalid room"
 
         return self.async_show_form(
             step_id="setClass",
             data_schema=vol.Schema(
                 {
-                    vol.Required("roomID", default="A122"): vol.In(ROOM_LIST),
-                    vol.Required("delay", default=5): vol.All(
-                        int, vol.Range(min=ATTR_DELAY_MIN, max=ATTR_DELAY_MAX)
-                    ),
+                    vol.Required("roomID",default="A122"): vol.In(ROOM_LIST),
                     vol.Required("supply", default=0): vol.In(SUPPLY_TYPE),
                 }
             ),
@@ -152,8 +154,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 if len(user_input["roomID"]) < 5:
                     self._data["config"][ATTR_ROOM_TYPE] = 1
                     self._data["config"][ATTR_ROOM_ID] = str(user_input["roomID"])
-                    self._data["config"][ATTR_DELAY] = user_input["delay"]
-                    self._data["config"][ATTR_SUPPLY] = user_input["supply"]
+                    if supply := user_input["supply"]:
+                        self._data["config"][ATTR_SUPPLY] = supply
+                        self._data["config"][ATTR_DELAY] = ATTR_DEFAULT_DELAY
+                    else:
+                        self._data["config"][ATTR_SUPPLY] = supply
+                        return await self.async_step_refreshTime()
                     return await self.async_step_confirm()
 
                 errors["base"] = "invalid room"
@@ -163,13 +169,28 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Required("roomID"): str,
-                    vol.Required("delay", default=5): vol.All(
-                        int, vol.Range(min=ATTR_DELAY_MIN, max=ATTR_DELAY_MAX)
-                    ),
                     vol.Required("supply", default=0): vol.In(SUPPLY_TYPE),
                 }
             ),
             errors=errors,
+        )
+
+    async def async_step_refreshTime(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """SUPPLY_TYPE battery"""
+        if user_input is not None:
+            self._data["config"][ATTR_DELAY] = user_input["delay"]
+            return await self.async_step_confirm()
+        return self.async_show_form(
+            step_id="refreshTime",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("delay", default=5): vol.All(
+                        int, vol.Range(min=ATTR_DELAY_MIN, max=ATTR_DELAY_MAX)
+                    ),
+                }
+            ),
         )
 
     async def async_step_confirm(self, user_input=None) -> FlowResult:
@@ -198,28 +219,13 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             "sensor": config_entry.options.get("sensor", None),
             "cmd": None,
         }
-        self._steps = []
 
     async def async_step_init(self, user_input=None) -> FlowResult:
         """Handle init flow."""
-        if user_input:
-            if user_input.get("async_step_update_timedelay", False):
-                self._steps.append(self.async_step_update_timedelay())
-            if user_input.get("async_step_add_sensors", False):
-                self._steps.append(self.async_step_add_sensors())
-            if user_input.get("async_step_cmd", False):
-                self._steps.append(self.async_step_cmd())
-
-            if self._steps:
-                self._steps.append(self.async_finish())
-                return await self._steps.pop(0)
-
-            return self.async_abort(reason="no_configurable_options")
-        fields = {}
-        fields[vol.Optional("async_step_update_timedelay")] = bool
-        fields[vol.Optional("async_step_cmd")] = bool
-        fields[vol.Optional("async_step_add_sensors")] = bool
-        return self.async_show_form(step_id="init", data_schema=vol.Schema(fields))
+        return self.async_show_menu(
+            step_id="init",
+            menu_options=["update_timedelay", "cmd", "add_sensors"],
+        )
 
     async def async_step_update_timedelay(
         self, user_input: dict[str, Any] | None = None
@@ -227,7 +233,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """update timedelay."""
         if user_input:
             self._data["delay"] = user_input["delay"]
-            return await self._steps.pop(0)
+            return await self.async_finish()
         return self.async_show_form(
             step_id="update_timedelay",
             data_schema=vol.Schema(
@@ -245,58 +251,23 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         errors = {}
         # add some regex to filter out other sensors
         for sensor in self.hass.states.async_entity_ids("sensor"):
-            _logger.debug(sensor)
             if not re.match(pattern="sensor.*_(current|next)", string=sensor):
                 all_sensors.append(sensor)
-        # all_sensors.sort()
+        all_sensors.sort()
         all_sensors.append("delete")
-        # if user_input:
-        #     if len(user_input["sensor"]) > ATTR_SENSOR_MAX:
-        #         errors["base"] = "too_many_sensors"
-        #     else:
-        #         self._data["sensor"] = user_input["sensor"]
-        #         return await self._steps.pop(0)
-
-        # return self.async_show_form(
-        #     step_id="add_sensors",
-        #     data_schema=vol.Schema(
-        #         {
-        #             vol.Required(
-        #                 "sensor", default=self._data["sensor"]
-        #             ): cv.multi_select(all_sensors),
-        #         }
-        #     ),
-        #     errors=errors,
-        # )
-        selected_sensors = dict(
-            zip(
-                ["sensor1", "sensor2", "sensor3"],
-                self._data["sensor"] + [""] * (3 - len(self._data["sensor"]))
-                if self._data["sensor"]
-                else [""] * 3,
-            )
-        )
-        sensor_data = []
         if user_input:
-            for sensor in user_input.values():
-                if sensor == "":
-                    continue
-                if sensor not in all_sensors:
-                    errors["base"] = "not found"
-                    break
-
-                sensor_data.append(sensor)
+            if len(user_input["sensor"]) > ATTR_SENSOR_MAX:
+                errors["base"] = "too_many_sensors"
             else:
-                self._data["sensor"] = list(set(sensor_data))
-                return await self._steps.pop(0)
-
+                self._data["sensor"] = user_input["sensor"]
+                return await self.async_finish()
         return self.async_show_form(
             step_id="add_sensors",
             data_schema=vol.Schema(
                 {
-                    vol.Required("sensor1", default=selected_sensors["sensor1"]): str,
-                    vol.Optional("sensor2", default=selected_sensors["sensor2"]): str,
-                    vol.Optional("sensor3", default=selected_sensors["sensor3"]): str,
+                    vol.Required(
+                        "sensor", default=self._data["sensor"]
+                    ): cv.multi_select(all_sensors),
                 }
             ),
             errors=errors,
@@ -306,7 +277,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """select cmd."""
         if user_input is not None:
             self._data["cmd"] = user_input["cmd"]
-            return await self._steps.pop(0)
+            return await self.async_finish()
         return self.async_show_form(
             step_id="cmd",
             data_schema=vol.Schema(

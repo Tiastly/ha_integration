@@ -1,14 +1,16 @@
 """Constants for the ePlate integration."""
+import pytz
+
 DOMAIN ="ePlate"
 # DOMAIN = "scheduletracker"
-TIME_ZONE = "europe/berlin"
+TIME_ZONE = pytz.timezone('Europe/Berlin')
 BASE_API_URL = "https://spluseins.de/api/splus"
 
 # types
 LECT_TYPE = {0: "current", 1: "next"}
 ROOM_TYPE = {0: "classroom mode", 1: "office mode"}
 CMD_TYPE = {1: "refresh immediately", 2: "clear all", 3: "reset the display"}
-SUPPLY_TYPE = {0: "Battery only", 1: "with cable"}
+SUPPLY_TYPE = {0: "Battery", 1: "Power"}
 # attributes
 ATTR_ROOM_ID = "roomID"
 ATTR_ROOM_TYPE = "roomType"
@@ -17,6 +19,8 @@ ATTR_DIS = "roomDescribtion"
 ATTR_DELAY = "delay"
 ATTR_SUPPLY = "supplyType"
 ATTR_CMD = "command"
+ATTR_DEFAULT_DELAY = 1
+# delay for refresh and publish
 ATTR_DELAY_MIN = 1
 ATTR_DELAY_MAX = 30
 ATTR_SENSOR_MAX = 3
@@ -62,7 +66,7 @@ PATTERN_CMD_RESET = "/ePlate/{roomID}/factoryReset"
 PATTERN_CMD = [PATTERN_CMD_FRESH, PATTERN_CMD_CLEAR, PATTERN_CMD_RESET]
 PATTERN_CMD_GLOBAL = ["/ePlate/refresh","/ePlate/clear", "/ePlate/factoryReset"]
 PATTERN_PLAN = "/ePlate/{roomID}/plannung"
-PATTERN_MEMBER = "/ePlate/{roomID}/member"
+PATTERN_MEMBER = "/ePlate/{roomID}"
 PATTERN_MSG = "/ePlate/{roomID}/message"  # special for office
 PATTERN_SENSOR = "/ePlate/{roomID}/sensor"
 # payload-patterns

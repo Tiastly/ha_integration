@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 from datetime import timedelta
+
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import Entity
 from homeassistant.config_entries import ConfigEntry
@@ -16,7 +17,7 @@ from .const import (
     ATTR_TIME,
     LECT_TYPE,
     ATTR_INFO,
-    ATTR_DELAY_MIN,
+    ATTR_DEFAULT_DELAY,
     PATTERN_PLAN_SUB_PAYLOAD,
 )
 from .scrap import ClassroomData
@@ -37,14 +38,14 @@ async def async_setup_entry(
     classroom = ClassroomData(
         session=session,
         location=device.name,
-        time_interval=ATTR_DELAY_MIN,
+        time_interval=ATTR_DEFAULT_DELAY / 2,
     )
     lectures = [
         LectureEntity(
             hass=hass,
             classroom=classroom,
             lect_type=lect,
-            time_interval=timedelta(minutes=ATTR_DELAY_MIN),
+            time_interval=timedelta(minutes=ATTR_DEFAULT_DELAY / 2),
             device=device,
             data_package=data_package,
         )
@@ -54,14 +55,7 @@ async def async_setup_entry(
         await lect.async_update_lect()
 
     async_add_entities(lectures)
-    # await mqtt.async_publish(
-    #     hass=hass,
-    #     topic= data_package["topic"]["plan"],
-    #     payload = payload_fix(data_package["payload"]["plan"], "plan"),
-    #     qos=0,
-    #     retain=True,
-    # )
-    _logger.debug("init finished")
+    _logger.debug("--------------init finished----------------------")
     return True
 
 
@@ -106,18 +100,10 @@ class LectureEntity(Entity):
     def name(self) -> str:
         return f"{self._device.name}_{LECT_TYPE[self._lect_type]}"
 
-    # @property
-    # def state(self) -> str | None:
-    #     return self._state
-
-    # @property
-    # def extra_state_attributes(self) -> dict[str]:
-    #     return self._attr_extra_state_attributes
-
     async def async_update_lect(self) -> None:
         """update the sensor infomations."""
-        await self._data.async_update()
         self._attr_state = self._data.now.strftime("%Y-%m-%d %H:%M:%S")
+        await self._data.async_update()
         if self._lect_type == 0:
             self._attr_extra_state_attributes[ATTR_TIME] = self._data.rest_time
             self._attr_extra_state_attributes[ATTR_LECT] = self._data.curr_lecture

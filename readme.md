@@ -36,7 +36,7 @@ the information consist of 3 parts,
 - [x] fix: empty text
 - [x] fix: entity struct
 - [x] update: member payload
-- [ ] UI Guide
+- [x] UI Guide
   - [x] update: Modiauswahl 
   - [x] add: Sensorauswahl
 

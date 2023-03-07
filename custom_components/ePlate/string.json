@@ -18,7 +18,7 @@
             "user":{
                 "title": "Manual Setup",
                 "description": "please add the 4 bit code on display to continue"
-            },
+                },
             "setType": {
                 "title": "Display type setting",
                 "description": "firstly, please select the type of display",
@@ -31,14 +31,9 @@
             },
             "setClass":{
                 "title": "Setup Classroom",
-                "description": "1. select the supported roomID\n2. enter the delay time in minutes\n",
                 "data": {
                     "roomID": "roomNr",
-                    "delay": "refresh time"
-                },
-                "data_description": {
-                    "roomID": "room number you want to display",
-                    "delay": "unit: minute"
+                    "supply": "supply mode"
                 }
             },
             "setOffice":{
@@ -46,11 +41,14 @@
                 "description": "1.enter the room number\n2.enter the delay time in minutes\nWarn: the roomID should be no longer than 4 digits",
                 "data": {
                     "roomID": "roomNr",
-                    "delay": "delay in min"
-                },
-                "data_description": {
-                    "roomID": "room number you want to display",
-                    "delay": "unit: minute"
+                    "supply": "supply mode"
+                }
+            },
+            "delay":{
+                "title": "Set refresh time",
+                "description": "you have selected supply mode: Battery\nplease enter additionally the refresh time in minutes",
+                "data": {
+                    "delay": "unit: minutes"
                 }
             }
     },
@@ -61,24 +59,27 @@
         },
         "step": {
             "init": {
-                "data": {
-                    "async_step_update_timedelay": "change refresh time",
-                    "async_step_add_sensors": "add other sensors",
-                    "async_step_cmd":"Global command topic"
-                },
-                "title": "Would you like to..."
+                    "title": "Would you like to...",
+                    "menu_options":
+                        {
+                            "update_timedelay": "update refresh time",
+                            "cmd": "global command topic",
+                            "add_sensors":"add other room sensor"
+                        }
+                    }
             },
             "update_timedelay":{
                 "title": "Set refresh time",
-				"description": "set time delay in minutes"
+				"description": "set refresh time in minutes\nTips: for supply mode: Power, this setting will change the publish interval of MQTT",
+                "data": {
+                    "delay": "unit: minutes"
+                }
             },
             "add_sensors":{
                 "title": "Add other sensors",
                 "description": "Select sensors to add to the display,you can maximum add 3 sensors\n Tips: to delete all sensors, please enter 'delete' in any sensor field.",
                 "data": {
-                    "sensor1": "sensor1",
-                    "sensor2": "sensor2",
-                    "sensor3": "sensor3"
+                    "sensor": "sensor name"
                 }
             },
             "cmd":{
@@ -87,4 +88,4 @@
             }
         }
     }
-}
+

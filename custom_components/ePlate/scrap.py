@@ -1,33 +1,28 @@
 """api scrap and row processing."""
 from __future__ import annotations
-
-import concurrent.futures
-import datetime
-import json
 import logging
+
+import json
+import concurrent.futures
+from datetime import datetime, timedelta
 
 import aiofiles
 import aiohttp
 import dateutil.parser
 
-from .const import BASE_API_URL
+from .const import BASE_API_URL, TIME_ZONE
 from .studenplan import STUDEN_PLAN
-
-from homeassistant.util.dt import now
-
 
 _logger = logging.getLogger(__name__)
 
+
 #  today's all timetable
-
-
 class Scrap:
     """scrap the classinfomation."""
 
-    def __init__(self, session, location=None):
-        self._now = now()
+    def __init__(self, session, time):
+        self._now = time
         self._session = session
-        # self._lo = location
 
     def week_info(self):
         """week infomation."""
@@ -39,7 +34,6 @@ class Scrap:
         """processing the single url requst."""
         data = []
         try:
-            # session = async_get_clientsession(self._hass)
             async with self._session.get(url, timeout=30) as response:
                 response.raise_for_status()
                 _logger.debug("Got response [%s] for URL: %s", response.status, url)
@@ -49,10 +43,7 @@ class Scrap:
                     _logger.debug("Found lecture")
                     for lecture in resp:
                         # only scrap todays lectures
-                        if (
-                            lecture["start"][:10]
-                            == (self._now.date()).isoformat()
-                        ):
+                        if lecture["start"][:10] == (self._now.date()).isoformat():
                             if "id" and "meta" and "duration" in lecture:
                                 lecture.pop("id")
                                 lecture.pop("duration")
@@ -119,7 +110,6 @@ class Scrap:
         import os
 
         # paths = f"{os.path.abspath(os.curdir)}/custom_components/ePlate/room"
-        # # test only
         paths = f"{os.path.abspath(os.curdir)}/homeassistant/components/scheduletracker/room"
         if not os.path.exists(paths):
             os.makedirs(paths)
@@ -180,7 +170,7 @@ class ClassroomData:
     @property
     def now(self):
         """update current time."""
-        self._now = now()
+        self._now = datetime.now(tz=TIME_ZONE)
         return self._now
 
     @property
@@ -286,7 +276,9 @@ class ClassroomData:
 
     async def async_update(self):
         """update the infomation in time_interval."""
-        _logger.debug("now:%s,curr:%s,next%s", self._now, self.curr_lecture, self._next_lect)
+        _logger.debug(
+            "now:%s,curr:%s,next%s", self._now, self.curr_lecture, self._next_lect
+        )
         # time here means current time
         # if any lecture has been scheduled
         # then not need to update the whole lecture, rather the rest of both time
@@ -307,11 +299,12 @@ class ClassroomData:
         # update_time == 0, update the timetable/lect, otherwise will only update rest_time
         _logger.debug("Update from lect%s,location%s", self._now, self._lo)
 
-        location_plan = await Scrap(session=self._session).lookup_location(self._lo)
+        location_plan = await Scrap(
+            session=self._session, time=self._now
+        ).lookup_location(self._lo)
 
         def positing():
-            cur = None
-            nex = None
+            nex, cur = None, None
             for i, lecture in enumerate(location_plan):
                 lecture["start"] = self._time_convert(lecture["start"])
                 lecture["end"] = self._time_convert(lecture["end"])
@@ -350,8 +343,12 @@ class ClassroomData:
     # data processing help functions
     def _time_convert(self, time: str) -> datetime:
         """change the starttime format only."""
-        return dateutil.parser.isoparse(time)
+        return dateutil.parser.isoparse(time) + timedelta(hours=1)
 
     def _time_format(self, date_time):
-        delta = abs(self._now - date_time)
+        if self._now > date_time:
+            delta = self._now - date_time
+        else:
+            delta = date_time - self._now - timedelta(hours=1)
+
         return round(delta.total_seconds() / 60, 3)  # rest_time in minute

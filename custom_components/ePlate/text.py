@@ -1,6 +1,6 @@
 """each room has description and qr-code."""
-import logging
 import re
+import logging
 
 from homeassistant.const import Platform
 from homeassistant.components import mqtt
@@ -9,7 +9,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.components.text import TextEntity, TextEntityDescription
 
-from .const import (  # ATTR_DELAY,; ATTR_DELAY_MIN,; ATTR_DELAY_MAX,
+from .const import (
     DOMAIN,
     ATTR_DIS,
     ATTR_MAIL,
@@ -31,9 +31,6 @@ _logger = logging.getLogger(__name__)
 
 
 TEXT_TYPES = {
-    # ATTR_DELAY: TextEntityDescription(
-    #     key=ATTR_DELAY, name=ATTR_DELAY, native_min=ATTR_DELAY_MIN, native_max=ATTR_DELAY_MAX,
-    # ),
     ATTR_QR: TextEntityDescription(
         key=ATTR_QR, name=ATTR_QR, native_min=0, native_max=50
     ),
@@ -41,22 +38,22 @@ TEXT_TYPES = {
         key=ATTR_DIS, name=ATTR_DIS, native_min=0, native_max=50
     ),
     ATTR_NAME: TextEntityDescription(
-        key=ATTR_NAME, name=ATTR_NAME, native_min=0, native_max=20
+        key=ATTR_NAME, name=ATTR_NAME, native_min=0, native_max=40
     ),
     ATTR_TEL: TextEntityDescription(
         key=ATTR_TEL, name=ATTR_TEL, native_min=0, native_max=20
     ),
     ATTR_MAIL: TextEntityDescription(
-        key=ATTR_MAIL, name=ATTR_MAIL, native_min=0, native_max=20
+        key=ATTR_MAIL, name=ATTR_MAIL, native_min=0, native_max=40
     ),
     ATTR_MSG: TextEntityDescription(
-        key=ATTR_MSG, name=ATTR_MSG, native_min=0, native_max=20
+        key=ATTR_MSG, name=ATTR_MSG, native_min=0, native_max=30
     ),
     ATTR_MSG_TITLE: TextEntityDescription(
         key=ATTR_MSG_TITLE, name=ATTR_MSG_TITLE, native_min=0, native_max=20
     ),
     ATTR_MSG_INFO: TextEntityDescription(
-        key=ATTR_MSG_INFO, name=ATTR_MSG_INFO, native_min=0, native_max=20
+        key=ATTR_MSG_INFO, name=ATTR_MSG_INFO, native_min=0, native_max=90
     ),
 }
 
@@ -148,15 +145,6 @@ class BasicInfoText(InfoText):
 
     async def async_set_value(self, value: str) -> None:
         # when the value changed, make the mqtt publish
-        # if self._info_type == ATTR_QR and not re.match(
-        #   pattern="[a-zA-z]+://[^\s]*", string=value
-        # ):
-        #   raise ValueError("invalid url")
-        _logger.debug(
-            "topic:%s\npayload:%s",
-            self._data_package["topic"]["base"],
-            self._data_package["payload"]["base"],
-        )
         try:
             self._data_package["payload"]["base"][self._info_type] = value
             await mqtt.async_publish(
@@ -164,7 +152,7 @@ class BasicInfoText(InfoText):
                 topic=self._data_package["topic"]["base"],
                 payload=self._data_package["payload"]["base"],
                 qos=0,
-                retain=False,
+                retain=True,
             )
         except Exception as err:
             _logger.error(err)
@@ -179,7 +167,7 @@ class MSGInfoText(InfoText):
                 topic=PATTERN_MSG.format(roomID=self._attr_device_info["name"]),
                 payload=self._data_package["payload"]["room"]["message"],
                 qos=0,
-                retain=False,
+                retain=True,
             )
         except Exception as err:
             _logger.error(err)
