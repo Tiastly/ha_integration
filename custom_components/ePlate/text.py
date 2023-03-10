@@ -1,13 +1,13 @@
 """each room has description and qr-code."""
 import re
 import logging
-
+from typing import Any
 from homeassistant.const import Platform
 from homeassistant.components import mqtt
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.components.text import TextEntity, TextEntityDescription
+from homeassistant.components.text import TextEntityDescription,RestoreText
 
 from .const import (
     DOMAIN,
@@ -25,6 +25,7 @@ from .const import (
     PATTERN_BASE_PAYLOAD,
     PATTERN_MEMBER_PAYLOAD,
     PATTERN_MSG_PAYLOAD,
+    ATTR_DEFAULT_TEXT
 )
 
 _logger = logging.getLogger(__name__)
@@ -111,10 +112,10 @@ async def async_setup_entry(
     return True
 
 
-class InfoText(TextEntity):
+class InfoText(RestoreText):
     """parent class for all text entities."""
 
-    def __init__(self, hass, device, info_type: str, data_package) -> None:
+    def __init__(self, hass, device, info_type, data_package) -> None:
         """Initialize the text."""
         self._hass = hass
         self._device = device
@@ -127,9 +128,9 @@ class InfoText(TextEntity):
             "model": device.model,
             "sw_version": device.sw_version,
         }
-        self._attr_native_value = "(null)"
-        self.entity_description = TEXT_TYPES[self._info_type]
+        self._attr_native_value : Any
 
+        self.entity_description = TEXT_TYPES[self._info_type]
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
@@ -138,13 +139,21 @@ class InfoText(TextEntity):
     @property
     def name(self) -> str:
         return f"{self._device.name}_{self._info_type}"
-
+    
+    async def async_added_to_hass(self):
+        """wenn restart, restore the state"""
+        await super().async_added_to_hass()
+        if (last_text := await self.async_get_last_text_data()):
+            if last_text.native_value:
+                self._attr_native_value = last_text.native_value
+        else:
+            self._attr_native_value = ATTR_DEFAULT_TEXT
 
 class BasicInfoText(InfoText):
     """save the description and qr-code of the room."""
-
     async def async_set_value(self, value: str) -> None:
         # when the value changed, make the mqtt publish
+        self._attr_native_value = value
         try:
             self._data_package["payload"]["base"][self._info_type] = value
             await mqtt.async_publish(
@@ -157,9 +166,9 @@ class BasicInfoText(InfoText):
         except Exception as err:
             _logger.error(err)
 
-
 class MSGInfoText(InfoText):
     async def async_set_value(self, value: str) -> None:
+        self._attr_native_value = value
         try:
             self._data_package["payload"]["room"]["message"][self._info_type] = value
             await mqtt.async_publish(
@@ -180,7 +189,6 @@ class MemberInfoText(InfoText):
         """Initialize the text."""
         super().__init__(hass, device, info_type, data_package)
         self._member_bit = member_bit
-
     @property
     def name(self) -> str:
         return f"{self._device.name}_{self._member_bit}_{self._info_type}"
@@ -194,6 +202,7 @@ class MemberInfoText(InfoText):
             pattern="^\\w+([-+.]\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*$", string=value
         ):
             raise ValueError("invalid mail")
+        self._attr_native_value = value
         member = self._data_package["payload"]["room"][self._member_bit]
         member[self._info_type] = value
         _logger.debug({self._member_bit: member})

@@ -30,7 +30,7 @@ the information consist of 3 parts,
 - [x] add: move cmd_control to ButtonEntity so that repeatable 
 - [x] add: additionally message block for office type 
 - [ ] fix: illegal Manual entry-code 
-- [ ] fix: keep member after restart
+- [x] fix: keep member after restart
 - [x] fix: msg payload
 
 - [x] fix: empty text

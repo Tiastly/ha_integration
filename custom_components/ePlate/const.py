@@ -1,8 +1,7 @@
 """Constants for the ePlate integration."""
-import pytz
-
 DOMAIN ="ePlate"
-# DOMAIN = "scheduletracker"
+import pytz
+#DOMAIN = "scheduletracker"
 TIME_ZONE = pytz.timezone('Europe/Berlin')
 BASE_API_URL = "https://spluseins.de/api/splus"
 
@@ -20,6 +19,7 @@ ATTR_DELAY = "delay"
 ATTR_SUPPLY = "supplyType"
 ATTR_CMD = "command"
 ATTR_DEFAULT_DELAY = 1
+ATTR_DEFAULT_TEXT = "(null)"
 # delay for refresh and publish
 ATTR_DELAY_MIN = 1
 ATTR_DELAY_MAX = 30
