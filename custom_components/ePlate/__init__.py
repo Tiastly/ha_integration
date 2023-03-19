@@ -1,36 +1,41 @@
 """The ePlate integration."""
 from __future__ import annotations
 
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 import logging
 
 from homeassistant.components import mqtt
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.typing import ConfigType
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import (
+    ATTR_DEVICE_CLASS,
+    ATTR_UNIT_OF_MEASUREMENT,
+    ATTR_FRIENDLY_NAME,
+    Platform,
+)
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.event import async_track_time_interval
-from homeassistant.const import ATTR_DEVICE_CLASS, ATTR_UNIT_OF_MEASUREMENT, Platform
+from homeassistant.helpers.typing import ConfigType
 
 from .const import (
-    DOMAIN,
-    TOPIC_ID,
     ATTR_ROOM_ID,
     ATTR_ROOM_TYPE,
     ATTR_SENSOR_INFO,
     ATTR_SENSOR_TYPE,
     ATTR_SENSOR_UNIT,
-    PATTERN_CMD,
-    PATTERN_INIT,
+    ATTR_SENSOR_NAME,
+    DOMAIN,
     PATTERN_BASE,
-    PATTERN_PLAN,
-    PATTERN_DELAY,
-    PATTERN_SENSOR,
-    PATTERN_MEMBER,
-    PATTERN_CMD_GLOBAL,
     PATTERN_BASE_PAYLOAD,
+    PATTERN_CMD_GLOBAL,
+    PATTERN_DELAY,
+    PATTERN_INIT,
+    PATTERN_MEMBER,
     PATTERN_MEMBER_PAYLOAD,
+    PATTERN_PLAN,
     PATTERN_PLAN_PAYLOAD,
+    PATTERN_SENSOR,
+    TOPIC_ID,
 )
 
 _logger = logging.getLogger(__name__)
@@ -94,11 +99,11 @@ async def load_first_info(hass: HomeAssistant, entry: ConfigEntry):
     # init topic publish
     await once_mqtt_publish(hass, row_topic=entry, row_payload="init", retain=False)
     # create entity
+    change_publish_interval(
+        hass, entry, timedelta(minutes=entry.data["config"]["delay"])
+    )
     if entry.data["config"][ATTR_ROOM_TYPE] == 0:  # classroom
         _logger.debug("begin to load class device")
-        change_publish_interval(
-            hass, entry, timedelta(minutes=entry.data["config"]["delay"])
-        )  # only classroom need routine publish
     elif entry.data["config"][ATTR_ROOM_TYPE] == 1:  # office
         _logger.debug("begin to load office device")
         hass.data[DOMAIN][entry.entry_id]["topic"]["room"] = PATTERN_MEMBER.format(
@@ -182,7 +187,7 @@ def change_publish_interval(
 
         async def get_sensor_data(data_package):
             # update sensor information
-            for sensor in data_package["payload"]["sensor"].keys():
+            for sensor in data_package["payload"]["sensor"]:
                 state = hass.states.get(sensor)
                 if state is None:
                     continue
@@ -192,6 +197,7 @@ def change_publish_interval(
                         state.attributes.get(ATTR_UNIT_OF_MEASUREMENT, None)
                     ),
                     ATTR_SENSOR_TYPE: state.attributes.get(ATTR_DEVICE_CLASS, None),
+                    ATTR_SENSOR_NAME: state.attributes.get(ATTR_FRIENDLY_NAME, None),
                 }
 
         if data_package["payload"]["init"][ATTR_ROOM_TYPE] == 0:  # classroom
@@ -274,7 +280,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 def payload_fix(payload, topid_id):
-    """fix payload"""
+    """fix payload."""
 
     if topid_id in ["init", "delay"]:
         return payload
@@ -294,11 +300,14 @@ def payload_fix(payload, topid_id):
         if payload:
             dump = {}
             for key, values in payload.items():
-                info, unit, types = values.values()
+                info, unit, types, name = values.values()
                 if unit == "°C" or "°F":
                     unit = unit[-1]
                 if not types:
-                    types = key.strip("sensor.")
+                    if name:
+                        types = name
+                    else:
+                        types = key.strip("sensor.")
                 dump.update(
                     {f"{types}": {ATTR_SENSOR_INFO: info, ATTR_SENSOR_UNIT: unit}}
                 )

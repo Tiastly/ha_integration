@@ -1,9 +1,9 @@
 """Config flow for ePlate."""
 from __future__ import annotations
 
-import re
 import json
 import logging
+import re
 from typing import Any
 
 import voluptuous as vol
@@ -11,23 +11,22 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
-
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.service_info.mqtt import MqttServiceInfo
 
 from .const import (
-    DOMAIN,
-    CMD_TYPE,
-    SUPPLY_TYPE,
+    ATTR_DEFAULT_DELAY,
     ATTR_DELAY,
-    ATTR_SUPPLY,
-    ATTR_ROOM_ID,
     ATTR_DELAY_MAX,
     ATTR_DELAY_MIN,
+    ATTR_ROOM_ID,
     ATTR_ROOM_TYPE,
     ATTR_SENSOR_MAX,
-    ATTR_DEFAULT_DELAY,
+    ATTR_SUPPLY,
+    CMD_TYPE,
+    DOMAIN,
     PATTERN_INIT_PAYLOAD,
+    SUPPLY_TYPE,
 )
 from .roomlist import ROOM_LIST
 
@@ -72,7 +71,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Manual Setup."""
-        errors = {}
+        error = {}
         if user_input is not None:
             if len(user_input["identifiers"]) == 4:
                 self._data["unique_id"] = "EinkDoorPlate-" + user_input["identifiers"]
@@ -84,7 +83,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     "sw_version": "1.0",
                 }
                 return await self.async_step_setType()
-            errors["base"] = "invalid id"
+            error["base"] = "invalid id"
             _logger.debug("user entry with %s", user_input["identifiers"])
         return self.async_show_form(
             step_id="user",
@@ -93,7 +92,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required("identifiers"): str,
                 }
             ),
-            errors=errors,
+            errors=error,
         )
 
     async def async_step_setType(
@@ -108,12 +107,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_setClass(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        errors = {}
+        error = {}
         if user_input is not None:
             self._room_id = user_input["roomID"]
             for sensor in self.hass.states.async_entity_ids("binary_sensor"):
                 if re.match(f"binary_sensor.{self._room_id.lower()}_display", sensor):
-                    errors["base"] = "sensor_exists"
+                    error["base"] = "sensor_exists"
                     break
             else:
                 if len(user_input["roomID"]) < 5:
@@ -127,28 +126,28 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         return await self.async_step_refreshTime()
                     return await self.async_step_confirm()
 
-                errors["base"] = "invalid room"
+                error["base"] = "invalid room"
 
         return self.async_show_form(
             step_id="setClass",
             data_schema=vol.Schema(
                 {
-                    vol.Required("roomID",default="A122"): vol.In(ROOM_LIST),
+                    vol.Required("roomID", default="A122"): vol.In(ROOM_LIST),
                     vol.Required("supply", default=0): vol.In(SUPPLY_TYPE),
                 }
             ),
-            errors=errors,
+            errors=error,
         )
 
     async def async_step_setOffice(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        errors = {}
+        error = {}
         if user_input is not None:
             self._room_id = user_input["roomID"]
             for sensor in self.hass.states.async_entity_ids("binary_sensor"):
                 if re.match(f"binary_sensor.{self._room_id.lower()}_display", sensor):
-                    errors["base"] = "sensor_exists"
+                    error["base"] = "sensor_exists"
                     break
             else:
                 if len(user_input["roomID"]) < 5:
@@ -162,7 +161,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         return await self.async_step_refreshTime()
                     return await self.async_step_confirm()
 
-                errors["base"] = "invalid room"
+                error["base"] = "invalid room"
 
         return self.async_show_form(
             step_id="setOffice",
@@ -172,13 +171,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required("supply", default=0): vol.In(SUPPLY_TYPE),
                 }
             ),
-            errors=errors,
+            errors=error,
         )
 
     async def async_step_refreshTime(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """SUPPLY_TYPE battery"""
+        """SUPPLY_TYPE battery."""
         if user_input is not None:
             self._data["config"][ATTR_DELAY] = user_input["delay"]
             return await self.async_step_confirm()
@@ -215,7 +214,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """Initialize options flow."""
         self.config_entry = config_entry
         self._data = {
-            "delay": config_entry.options.get("delay", 5),
+            "delay": config_entry.options.get("delay", config_entry.data["config"]["delay"]),
             "sensor": config_entry.options.get("sensor", None),
             "cmd": None,
         }
@@ -248,7 +247,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_add_sensors(self, user_input=None) -> FlowResult:
         """Manage to add other sensors."""
         all_sensors = []
-        errors = {}
+        error = {}
         # add some regex to filter out other sensors
         for sensor in self.hass.states.async_entity_ids("sensor"):
             if not re.match(pattern="sensor.*_(current|next)", string=sensor):
@@ -257,7 +256,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         all_sensors.append("delete")
         if user_input:
             if len(user_input["sensor"]) > ATTR_SENSOR_MAX:
-                errors["base"] = "too_many_sensors"
+                error["base"] = "too_many_sensors"
             else:
                 self._data["sensor"] = user_input["sensor"]
                 return await self.async_finish()
@@ -270,7 +269,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     ): cv.multi_select(all_sensors),
                 }
             ),
-            errors=errors,
+            errors=error,
         )
 
     async def async_step_cmd(self, user_input=None) -> FlowResult:

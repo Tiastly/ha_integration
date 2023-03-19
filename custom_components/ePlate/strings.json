@@ -1,0 +1,84 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "registered device, delete first"
+    },
+    "error": {
+      "invalid id": "Invalid identifiers, please check code on display again",
+      "invalid room": "roomID not supported",
+      "sensor_exists": "roomID already exists"
+    },
+    "flow_title": "E-Ink_Controller",
+    "step": {
+      "setType": {
+        "title": "Display type setting",
+        "description": "firstly, please select the type of display",
+        "menu_options": {
+          "setClass": "Classroom type",
+          "setOffice": "Office type"
+        }
+      },
+      "user": {
+        "description": "please add the 4 bit code on display to continue",
+        "title": "Manual Setup"
+      },
+    "setClass": {
+      "description": "1.select the room number\n2.enter the delay time in minutes",
+      "title": "Setup Classroom",
+      "data": {
+        "roomID": "roomNr",
+        "supply": "supply mode"
+      }
+    },
+    "setOffice": {
+      "description": "1.enter the room number\n2.enter the delay time in minutes\nWarn: the roomNr should be no longer than 4 digits",
+      "title": "Setup Office",
+      "data": {
+        "roomID": "roomNr",
+        "supply": "supply mode"
+      }
+    },
+    "refreshTime": {
+      "description": "you have selected supply mode: Battery\n please enter additionally the refresh time in minutes",
+      "title": "Set refresh time",
+      "data": {
+        "delay": "unit: minutes"
+      }
+    }
+  }
+},
+  "options": {
+    "error": {
+      "not found": "sensor not found, please check again",
+      "too_many_sensors": "you can only choose maximum 3 sensors"
+    },
+    "step": {
+      "init": {
+        "title": "Would you like to...",
+        "menu_options": {
+          "add_sensors": "add other room sensor",
+          "cmd": "global command topic",
+          "update_timedelay": "update refresh time"
+        }
+      },
+    "add_sensors": {
+      "data": {
+        "sensor": "sensor name"
+      },
+      "description": "Select sensors to add to the display, you can maximum add 3 sensors\n Tips: to delete all sensors, please select 'delete'.",
+      "title": "Add other sensors"
+    },
+    "cmd": {
+      "description": "Here are the commands for ALL displays. If you want to control ONE display, please use BUTTON on device settings",
+      "title": "Select GLOBAL command topic"
+    },
+    "update_timedelay": {
+      "data": {
+        "delay": "unit: minutes"
+      },
+      "description": "set refresh time in minutes\nTips: for supply mode: Power, this setting will change the publish interval of MQTT",
+      "title": "Set refresh time"
+    }
+  }
+}
+}

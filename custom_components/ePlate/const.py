@@ -1,8 +1,9 @@
 """Constants for the ePlate integration."""
-DOMAIN ="ePlate"
+DOMAIN = "eplate"
 import pytz
-#DOMAIN = "scheduletracker"
-TIME_ZONE = pytz.timezone('Europe/Berlin')
+
+# DOMAIN = "scheduletracker"
+TIME_ZONE = pytz.timezone("Europe/Berlin")
 BASE_API_URL = "https://spluseins.de/api/splus"
 
 # types
@@ -41,6 +42,7 @@ ATTR_SENSOR = "sensor"  # device_classes
 ATTR_SENSOR_INFO = "sensor_info"
 ATTR_SENSOR_UNIT = "sensor_unit"
 ATTR_SENSOR_TYPE = "sensor_type"  # device_classes
+ATTR_SENSOR_NAME = "sensor_name"
 # MQTT Discovery
 DISCOVERY_TOPIC = "/ePlate/init/devices/#"
 PATTERN_DISCOVERY = "/ePlate/init/devices/{unique_id}"
