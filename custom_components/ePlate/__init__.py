@@ -154,8 +154,9 @@ async def options_listener(hass: HomeAssistant, entry: ConfigEntry):
         change_publish_interval(
             hass=hass, entry=entry, time_interval=timedelta(minutes=delay / 2)
         )
-    elif (not data_package["payload"]["sensor"]) or (
-        sensors != list(data_package["payload"]["sensor"].keys())
+    elif sensors and (
+        (not data_package["payload"]["sensor"])
+        or (sensors != list(data_package["payload"]["sensor"].keys()))
     ):
         # make the sensor to ailas
         _logger.debug("sensor%s", sensors)
@@ -172,7 +173,7 @@ async def options_listener(hass: HomeAssistant, entry: ConfigEntry):
             topic=PATTERN_CMD_GLOBAL[cmd - 1],
             payload="{on}",
             qos=0,
-            retain=False,
+            retain=True,
         )
 
 
@@ -239,7 +240,7 @@ async def once_mqtt_publish(
             retain=retain,
         )
         return True
-    except Exception as err:
+    except Exception as err:  # pylint: disable=broad-except
         _logger.error(err)
     return False
 
@@ -265,16 +266,17 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if unload_ok:
             hass.data[DOMAIN].pop(entry.entry_id)
 
-    except Exception as err:
+    except Exception as err:  # pylint: disable=broad-except
         _logger.error(err)
 
     device_registry = dr.async_get(hass)
-    device = device_registry.async_get_device(
+    if device := device_registry.async_get_device(
         identifiers={(DOMAIN, entry.unique_id)},
-    )
-
-    if device is not None:
+    ):
         device_registry.async_remove_device(device.id)
+
+    # if device is not None:
+    #     device_registry.async_remove_device(device.id)
 
     return unload_ok
 
@@ -285,23 +287,27 @@ def payload_fix(payload, topid_id):
     if topid_id in ["init", "delay"]:
         return payload
     if topid_id == "room":
-        start = end = None
+        start_curr = end_curr = None
+        start_next = end_next = None
+        if payload["current"]["rest/begin_time"]:
+            start_curr, end_curr = payload["current"]["lect_info"].values()
         if payload["next"]["rest/begin_time"]:
-            start, end = payload["next"]["lect_info"].values()
+            start_next, end_next = payload["next"]["lect_info"].values()
         return {
             "classNow": str(payload["current"]["lectures"] or ""),
             "classNowRemainTime": str(payload["current"]["rest/begin_time"] or 0),
+            "classNowEndTime": str(end_curr or ""),
             "classNext": str(payload["next"]["lectures"] or ""),
             "classNextWaitTime": str(payload["next"]["rest/begin_time"] or 0),
-            "classNextStartTime": str(start or ""),
-            "classNextEndTime": str(end or ""),
+            "classNextStartTime": str(start_next or ""),
+            "classNextEndTime": str(end_next or ""),
         }
     if topid_id == "sensor":
         if payload:
             dump = {}
             for key, values in payload.items():
                 info, unit, types, name = values.values()
-                if unit == "°C" or "°F":
+                if unit == "°C" or unit == "°F":
                     unit = unit[-1]
                 if not types:
                     if name:

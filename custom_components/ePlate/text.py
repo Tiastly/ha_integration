@@ -1,31 +1,32 @@
 """each room has description and qr-code."""
-import re
 import logging
+import re
 from typing import Any
-from homeassistant.const import Platform
+
 from homeassistant.components import mqtt
-from homeassistant.core import HomeAssistant
+from homeassistant.components.text import RestoreText, TextEntityDescription,TextExtraStoredData
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import Platform
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.components.text import TextEntityDescription,RestoreText
 
 from .const import (
-    DOMAIN,
+    ATTR_DEFAULT_TEXT,
     ATTR_DIS,
     ATTR_MAIL,
+    ATTR_MEMBER_MAX,
     ATTR_MSG,
-    ATTR_NAME,
-    ATTR_QR,
-    ATTR_TEL,
-    PATTERN_MSG,
     ATTR_MSG_INFO,
     ATTR_MSG_TITLE,
+    ATTR_NAME,
+    ATTR_QR,
     ATTR_ROOM_TYPE,
-    ATTR_MEMBER_MAX,
+    ATTR_TEL,
+    DOMAIN,
     PATTERN_BASE_PAYLOAD,
     PATTERN_MEMBER_PAYLOAD,
+    PATTERN_MSG,
     PATTERN_MSG_PAYLOAD,
-    ATTR_DEFAULT_TEXT
 )
 
 _logger = logging.getLogger(__name__)
@@ -42,7 +43,7 @@ TEXT_TYPES = {
         key=ATTR_NAME, name=ATTR_NAME, native_min=0, native_max=40
     ),
     ATTR_TEL: TextEntityDescription(
-        key=ATTR_TEL, name=ATTR_TEL, native_min=0, native_max=20
+        key=ATTR_TEL, name=ATTR_TEL, native_min=0, native_max=30
     ),
     ATTR_MAIL: TextEntityDescription(
         key=ATTR_MAIL, name=ATTR_MAIL, native_min=0, native_max=40
@@ -128,9 +129,10 @@ class InfoText(RestoreText):
             "model": device.model,
             "sw_version": device.sw_version,
         }
-        self._attr_native_value : Any
+        self._attr_native_value: Any
 
         self.entity_description = TEXT_TYPES[self._info_type]
+
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
@@ -139,18 +141,24 @@ class InfoText(RestoreText):
     @property
     def name(self) -> str:
         return f"{self._device.name}_{self._info_type}"
-    
+
     async def async_added_to_hass(self):
-        """wenn restart, restore the state"""
+        """wenn restart, restore the state."""
         await super().async_added_to_hass()
-        if (last_text := await self.async_get_last_text_data()):
-            if last_text.native_value:
-                self._attr_native_value = last_text.native_value
+        last_text = await self.async_get_last_text_data()
+        if last_text and last_text.native_value != '':
+            self._attr_native_value = last_text.native_value
         else:
             self._attr_native_value = ATTR_DEFAULT_TEXT
 
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the entity."""
+        await super().async_will_remove_from_hass()
+        self._attr_native_value = ''
+
 class BasicInfoText(InfoText):
     """save the description and qr-code of the room."""
+
     async def async_set_value(self, value: str) -> None:
         # when the value changed, make the mqtt publish
         self._attr_native_value = value
@@ -165,6 +173,7 @@ class BasicInfoText(InfoText):
             )
         except Exception as err:
             _logger.error(err)
+
 
 class MSGInfoText(InfoText):
     async def async_set_value(self, value: str) -> None:
@@ -189,15 +198,16 @@ class MemberInfoText(InfoText):
         """Initialize the text."""
         super().__init__(hass, device, info_type, data_package)
         self._member_bit = member_bit
+
     @property
     def name(self) -> str:
         return f"{self._device.name}_{self._member_bit}_{self._info_type}"
 
     async def async_set_value(self, value: str) -> None:
-        if self._info_type == ATTR_TEL and not re.match(
-            pattern="^[0-9]*$", string=value
-        ):
-            raise ValueError("invalid tel")
+        #if self._info_type == ATTR_TEL and not re.match(
+         #   pattern="^[0-9]*$", string=value
+        #):
+         #   raise ValueError("invalid tel")
         if self._info_type == ATTR_MAIL and not re.match(
             pattern="^\\w+([-+.]\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*$", string=value
         ):

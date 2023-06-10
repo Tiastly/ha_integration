@@ -13,7 +13,8 @@ from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.service_info.mqtt import MqttServiceInfo
-
+from homeassistant.helpers.entity_registry import async_get_registry
+from homeassistant.const import ATTR_DEVICE_CLASS, CONF_ENTITY_ID, ATTR_DEVICE_CLASS
 from .const import (
     ATTR_DEFAULT_DELAY,
     ATTR_DELAY,
@@ -22,6 +23,7 @@ from .const import (
     ATTR_ROOM_ID,
     ATTR_ROOM_TYPE,
     ATTR_SENSOR_MAX,
+    ATTR_SENSOR_SUPPORT,
     ATTR_SUPPLY,
     CMD_TYPE,
     DOMAIN,
@@ -115,7 +117,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     error["base"] = "sensor_exists"
                     break
             else:
-                if len(user_input["roomID"]) < 5:
+                if user_input["roomID"]:
                     self._data["config"][ATTR_ROOM_TYPE] = 0
                     self._data["config"][ATTR_ROOM_ID] = user_input["roomID"][:4]
                     if supply := user_input["supply"]:
@@ -214,7 +216,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """Initialize options flow."""
         self.config_entry = config_entry
         self._data = {
-            "delay": config_entry.options.get("delay", config_entry.data["config"]["delay"]),
+            "delay": config_entry.options.get(
+                "delay", config_entry.data["config"]["delay"]
+            ),
             "sensor": config_entry.options.get("sensor", None),
             "cmd": None,
         }
@@ -248,15 +252,22 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """Manage to add other sensors."""
         all_sensors = []
         error = {}
-        # add some regex to filter out other sensors
         for sensor in self.hass.states.async_entity_ids("sensor"):
             if not re.match(pattern="sensor.*_(current|next)", string=sensor):
-                all_sensors.append(sensor)
+                state = self.hass.states.get(sensor)
+                types = state.attributes.get(ATTR_DEVICE_CLASS, None)
+                if types in ATTR_SENSOR_SUPPORT:
+                    all_sensors.append(sensor)
+                    
         all_sensors.sort()
-        all_sensors.append("delete")
+        all_sensors.append("Delete")
         if user_input:
-            if len(user_input["sensor"]) > ATTR_SENSOR_MAX:
+            if user_input["sensor"] == ["Delete"] == all_sensors:
+                error["base"] = "invalid_input"
+
+            elif len(user_input["sensor"]) > ATTR_SENSOR_MAX:
                 error["base"] = "too_many_sensors"
+
             else:
                 self._data["sensor"] = user_input["sensor"]
                 return await self.async_finish()

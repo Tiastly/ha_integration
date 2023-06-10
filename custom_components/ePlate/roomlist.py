@@ -12,8 +12,8 @@ ROOM_LIST = [
     "P6",
     "P7",
     # # Räume Fakultät
-    "HS A",
-    "HS E",
+    "HS_A",
+    "HS_E",
     "A122",
     "A126",
     "C004",

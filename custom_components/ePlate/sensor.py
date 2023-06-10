@@ -1,23 +1,23 @@
 """classroom platform."""
 from __future__ import annotations
 
-import logging
 from datetime import timedelta
+import logging
 
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import Entity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.event import async_track_time_interval
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_time_interval
 
 from .const import (
-    DOMAIN,
+    ATTR_DEFAULT_DELAY,
+    ATTR_INFO,
     ATTR_LECT,
     ATTR_TIME,
+    DOMAIN,
     LECT_TYPE,
-    ATTR_INFO,
-    ATTR_DEFAULT_DELAY,
     PATTERN_PLAN_SUB_PAYLOAD,
 )
 from .scrap import ClassroomData
@@ -33,11 +33,14 @@ async def async_setup_entry(
     device = data_package["device"]
     if device is None:
         return False
-
+    if device.name == "HS_A" or device.name == "HS_E":
+        location = device.name.replace("_"," ")
+    else:
+        location = device.name
     session = async_get_clientsession(hass)
     classroom = ClassroomData(
         session=session,
-        location=device.name,
+        location=location,
         time_interval=ATTR_DEFAULT_DELAY / 2,
     )
     lectures = [
@@ -70,7 +73,7 @@ class LectureEntity(Entity):
         time_interval,
         device,
         data_package,
-    ):
+    )->None:
         self._hass = hass
         self._attr_device_info = {
             "identifiers": device.identifiers,

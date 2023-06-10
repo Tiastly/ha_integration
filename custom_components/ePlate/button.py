@@ -2,24 +2,20 @@
 import logging
 
 from homeassistant.components import mqtt
+from homeassistant.components.button import ButtonEntity
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.components.button import ButtonEntity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import (
-    DOMAIN,
-    ATTR_ROOM_ID,
-    PATTERN_CMD,
-)
+from .const import ATTR_ROOM_ID, DOMAIN, PATTERN_CMD
 
 _logger = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
-) -> bool:
+) -> bool:# pylint: disable=broad-except
     """Setup cmd_control from a config entry created in the integrations UI."""
     data_package = hass.data[DOMAIN][entry.entry_id]
     device = data_package["device"]
@@ -48,7 +44,7 @@ async def async_setup_entry(
 class CMD_Control(ButtonEntity):
     """use button to send cmd to device."""
 
-    def __init__(self, hass, device, roomID, cmd_topic,entry) -> None:
+    def __init__(self, hass, device, roomID, cmd_topic, entry) -> None:
         """Initialize the text."""
         self._hass = hass
         self._device = device
@@ -78,11 +74,12 @@ class CMD_Control(ButtonEntity):
                 topic=self._topic,
                 payload="{on}",
                 qos=0,
-                retain=False,
+                retain=True,
             )
-            if self._topic.rsplit('/', maxsplit=1)[-1] == "factoryReset":
+            if self._topic.rsplit("/", maxsplit=1)[-1] == "factoryReset":
                 self._hass.async_create_task(
-                    self._hass.config_entries.async_remove(self.entityid)
+                    self._hass.config_entries.async_remove(entry_id=self.entityid)
                 )
-        except Exception as err:
+
+        except Exception as err:# pylint: disable=broad-except
             _logger.error(err)

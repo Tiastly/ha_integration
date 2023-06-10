@@ -1,8 +1,6 @@
 """Constants for the ePlate integration."""
-DOMAIN = "eplate"
+DOMAIN = "ePlate"
 import pytz
-
-# DOMAIN = "scheduletracker"
 TIME_ZONE = pytz.timezone("Europe/Berlin")
 BASE_API_URL = "https://spluseins.de/api/splus"
 
@@ -43,6 +41,7 @@ ATTR_SENSOR_INFO = "sensor_info"
 ATTR_SENSOR_UNIT = "sensor_unit"
 ATTR_SENSOR_TYPE = "sensor_type"  # device_classes
 ATTR_SENSOR_NAME = "sensor_name"
+ATTR_SENSOR_SUPPORT = ["temperature", "humidity", "illuminance"]
 # MQTT Discovery
 DISCOVERY_TOPIC = "/ePlate/init/devices/#"
 PATTERN_DISCOVERY = "/ePlate/init/devices/{unique_id}"
@@ -66,7 +65,7 @@ PATTERN_CMD_FRESH = "/ePlate/{roomID}/refresh"
 PATTERN_CMD_CLEAR = "/ePlate/{roomID}/clear"
 PATTERN_CMD_RESET = "/ePlate/{roomID}/factoryReset"
 PATTERN_CMD = [PATTERN_CMD_FRESH, PATTERN_CMD_CLEAR, PATTERN_CMD_RESET]
-PATTERN_CMD_GLOBAL = ["/ePlate/refresh","/ePlate/clear", "/ePlate/factoryReset"]
+PATTERN_CMD_GLOBAL = ["/ePlate/refresh", "/ePlate/clear", "/ePlate/factoryReset"]
 PATTERN_PLAN = "/ePlate/{roomID}/plannung"
 PATTERN_MEMBER = "/ePlate/{roomID}"
 PATTERN_MSG = "/ePlate/{roomID}/message"  # special for office
@@ -98,6 +97,7 @@ PATTERN_PLAN_PAYLOAD = {
 # i don like this:(
 PLAN_PAYLOAD = {
     "classNow": None,
+    "classNowEndTime":None,
     "classNowRemainTime": None,
     "classNext": None,
     "classNextWaitTime": None,
@@ -134,8 +134,7 @@ PATTERN_MEMBER_PAYLOAD = {  # str
         ATTR_MAIL: "",
         ATTR_MSG: "",
     },
-    "message":PATTERN_MSG_PAYLOAD
-
+    "message": PATTERN_MSG_PAYLOAD,
 }
 
 # max 3 sensors

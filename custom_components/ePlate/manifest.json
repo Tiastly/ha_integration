@@ -1,7 +1,7 @@
 {
   "domain": "ePlate",
   "name": "ePlateController",
-  "version":"0.0.2",
+  "version": "0.0.3",
   "config_flow": true,
   "documentation": "https://github.com/Tiastly/ha_integration",
   "requirements": [],

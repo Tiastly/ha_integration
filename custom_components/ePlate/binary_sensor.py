@@ -2,26 +2,22 @@
 from __future__ import annotations
 
 import logging
-from homeassistant.const import Platform
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
+from homeassistant.components.binary_sensor import (
+    BinarySensorDeviceClass,
+    BinarySensorEntity,
+)
 from homeassistant.components.mqtt.subscription import (
     async_prepare_subscribe_topics,
     async_subscribe_topics,
     async_unsubscribe_topics,
 )
-from homeassistant.components.binary_sensor import (
-    BinarySensorEntity,
-    BinarySensorDeviceClass,
-)
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import Platform
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import (
-    DOMAIN,
-    ATTR_ROOM_TYPE,
-    PATTERN_STATE,
-)
-
+from .const import ATTR_ROOM_TYPE, DOMAIN, PATTERN_STATE
 
 _logger = logging.getLogger(__name__)
 
@@ -45,10 +41,11 @@ async def async_setup_entry(
     )
 
     if room_type == 0:  # contiue to add lecture
-       hass.async_create_task(
+        hass.async_create_task(
             hass.config_entries.async_forward_entry_setup(entry, Platform.SENSOR)
         )
-    _logger.debug("init finished")
+    else:
+        _logger.debug("--------------init finished----------------------")
     return True
 
 
@@ -57,7 +54,7 @@ class DeviceSensor(BinarySensorEntity):
         self,
         hass: HomeAssistant,
         device,
-    ):
+    )->None:
         self._hass = hass
         self._device = device
         self._attr_device_info = {
@@ -70,6 +67,7 @@ class DeviceSensor(BinarySensorEntity):
         self._attr_device_class = BinarySensorDeviceClass.RUNNING
         self._attr_is_on = True
         self._listeners = {}
+
     @property
     def unique_id(self) -> str:
         return self.name
@@ -80,10 +78,11 @@ class DeviceSensor(BinarySensorEntity):
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to device status."""
+
         @callback
-        def update(message)->None:
+        def update(message) -> None:
             """update status."""
-            _logger.debug("update %s",message.payload)
+            _logger.debug("update device status%s", message.payload)
             if message.payload == "online":
                 self._attr_is_on = True
             elif message.payload == "offline":
@@ -96,7 +95,7 @@ class DeviceSensor(BinarySensorEntity):
             self._listeners,
             {
                 f"{self.unique_id}-state": {
-                    "topic": PATTERN_STATE.format(roomID = self._device.name),
+                    "topic": PATTERN_STATE.format(roomID=self._device.name),
                     "msg_callback": update,
                     "qos": 0,
                 },
@@ -104,7 +103,6 @@ class DeviceSensor(BinarySensorEntity):
         )
 
         await async_subscribe_topics(self.hass, self._listeners)
-
 
     async def async_will_remove_from_hass(self) -> None:
         if self._listeners is not None:

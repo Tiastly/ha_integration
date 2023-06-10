@@ -1,10 +1,11 @@
 """api scrap and row processing."""
 from __future__ import annotations
-import logging
 
-import json
 import concurrent.futures
 from datetime import datetime, timedelta
+import pytz
+import json
+import logging
 
 import aiofiles
 import aiohttp
@@ -20,7 +21,7 @@ _logger = logging.getLogger(__name__)
 class Scrap:
     """scrap the classinfomation."""
 
-    def __init__(self, session, time):
+    def __init__(self, session, time) -> None:
         self._now = time
         self._session = session
 
@@ -59,7 +60,7 @@ class Scrap:
                 getattr(aio_exceptions, "status", None),
                 getattr(aio_exceptions, "message", None),
             )
-        except Exception as other_exceptions:
+        except Exception as other_exceptions:  # pylint: disable=broad-except
             _logger.exception("Non-aiohttp exception %s occured", other_exceptions)
 
         return data
@@ -78,7 +79,7 @@ class Scrap:
             for future in concurrent.futures.as_completed(future_to_url):
                 try:
                     tasks += await future.result()
-                except Exception as exceptions:
+                except Exception as exceptions:  # pylint: disable=broad-except
                     _logger.debug("exception %s at full_request occured", exceptions)
 
         return [dict(t) for t in {tuple(d.items()) for d in tasks}]
@@ -105,12 +106,11 @@ class Scrap:
             await f.flush()
         _logger.debug("Wrote results in %s", self._now.date())
 
-    async def lookup_location(self, lo=None):
+    async def lookup_location(self, location=None):
         """default update all."""
         import os
 
-        # paths = f"{os.path.abspath(os.curdir)}/custom_components/ePlate/room"
-        paths = f"{os.path.abspath(os.curdir)}/homeassistant/components/scheduletracker/room"
+        paths = f"{os.path.abspath(os.curdir)}/custom_components/ePlate/room"
         if not os.path.exists(paths):
             os.makedirs(paths)
         files = f"{paths}/roomplan_{self._now.date()}.json"
@@ -119,19 +119,19 @@ class Scrap:
         try:
             with open(files, encoding="utf-8") as f:
                 room = json.loads(f.read())
-            if not lo:
+            if not location:
                 _logger.debug("Daily update at %s", self._now.date())
                 return room
             res = []
 
             for lecture in room:
-                if lecture["location"] == lo:
+                if lecture["location"] == location:
                     res.append(lecture)
                 elif res:
-                    _logger.debug("lookup location %s at %s", lo, self._now.date())
+                    _logger.debug("lookup location %s at %s", location, self._now.date())
                     return res
             _logger.debug(
-                "%s infos at location %s in %s find", len(res), lo, self._now.date()
+                "%s infos at location %s in %s find", len(res), location, self._now.date()
             )
             return res
 
@@ -140,7 +140,7 @@ class Scrap:
             return []
         except OSError as io_error:
             _logger.debug("I/O error %s): %s", io_error.errno, io_error.strerror)
-        except Exception as exceptions:
+        except Exception as exceptions:  # pylint: disable=broad-except
             _logger.debug("Unexpected error %s", exceptions)
 
 
@@ -149,8 +149,8 @@ class ClassroomData:
     get the current location information.
     """
 
-    def __init__(self, session, location, time_interval):
-        self._lo = location
+    def __init__(self, session, location, time_interval) -> None:
+        self._location = location
         self._now = None
         self._session = session
         self._lect = {
@@ -297,31 +297,35 @@ class ClassroomData:
     async def async_update_lect(self):
         """update the lecture infomation."""
         # update_time == 0, update the timetable/lect, otherwise will only update rest_time
-        _logger.debug("Update from lect%s,location%s", self._now, self._lo)
+        _logger.debug("Update from lect%s,location %s", self._now, self._location)
 
         location_plan = await Scrap(
             session=self._session, time=self._now
-        ).lookup_location(self._lo)
+        ).lookup_location(self._location)
 
         def positing():
-            nex, cur = None, None
+            nex = cur = None
             for i, lecture in enumerate(location_plan):
                 lecture["start"] = self._time_convert(lecture["start"])
                 lecture["end"] = self._time_convert(lecture["end"])
-                if self._now < lecture["end"]:  # has lecture
-                    if self._now >= lecture["start"]:
+                if self._now.timestamp() < lecture["end"].timestamp():  # has lecture
+                    _logger.debug("i find %s", lecture["end"])
+                    if self._now.timestamp() >= lecture["start"].timestamp():
                         # find current
                         cur = lecture
+                        _logger.debug("cur is:%s", cur)
                         try:
                             nex = location_plan[i + 1]
                             nex["start"] = self._time_convert(nex["start"])
                             nex["end"] = self._time_convert(nex["end"])
+
                         except IndexError:
                             # current is the last
                             break
                     else:  # current is none
                         nex = location_plan[i]
                     break
+                _logger.debug("cur:%s,next:%s", cur, nex)
             return [cur, nex]
 
         cur, nex = positing()
@@ -343,12 +347,14 @@ class ClassroomData:
     # data processing help functions
     def _time_convert(self, time: str) -> datetime:
         """change the starttime format only."""
-        return dateutil.parser.isoparse(time) + timedelta(hours=1)
+        return (
+            dateutil.parser.isoparse(time)
+            .replace(tzinfo=pytz.UTC)
+            .astimezone(TIME_ZONE)
+        )
 
     def _time_format(self, date_time):
-        if self._now > date_time:
-            delta = self._now - date_time
-        else:
-            delta = date_time - self._now - timedelta(hours=1)
-
-        return round(delta.total_seconds() / 60, 3)  # rest_time in minute
+        """ "change the time format to minutes"""
+        return round(
+            abs(date_time - self._now).total_seconds() / 60, 3
+        )  # rest_time in minute

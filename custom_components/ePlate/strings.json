@@ -50,7 +50,9 @@
   "options": {
     "error": {
       "not found": "sensor not found, please check again",
-      "too_many_sensors": "you can only choose maximum 3 sensors"
+      "too_many_sensors": "you can only choose maximum 3 sensors",
+      "no_sensor": "currently no sensor available",
+      "invalid_input": "you can not delete sensor before adding one"
     },
     "step": {
       "init": {
@@ -65,7 +67,7 @@
       "data": {
         "sensor": "sensor name"
       },
-      "description": "Select sensors to add to the display, you can maximum add 3 sensors\n Tips: to delete all sensors, please select 'delete'.",
+      "description": "Select sensors to add to the display, you can maximum add 3 sensors\nTips: to delete all sensors, please select 'Delete'.\nCurrently available sensors Types:temperature, humidity, illuminance",
       "title": "Add other sensors"
     },
     "cmd": {

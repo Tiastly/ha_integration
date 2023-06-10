@@ -30,7 +30,7 @@
                     "roomID": "roomNr",
                     "supply": "supply mode"
                 },
-                "description": "1.enter the room number\n2.enter the delay time in minutes\nWarn: the roomID should be no longer than 4 digits",
+                "description": "1.enter the room number\n2.enter the delay time in minutes\nWarn: the roomNr should be no longer than 4 digits",
                 "title": "Setup Office"
             },
             "setType": {
@@ -49,6 +49,8 @@
     },
     "options": {
         "error": {
+            "invalid_input": "you can not delete sensor before adding one",
+            "no_sensor": "currently no sensor available",
             "not found": "sensor not found, please check again",
             "too_many_sensors": "you can only choose maximum 3 sensors"
         },
@@ -57,7 +59,7 @@
                 "data": {
                     "sensor": "sensor name"
                 },
-                "description": "Select sensors to add to the display, you can maximum add 3 sensors\n Tips: to delete all sensors, please select 'delete'.",
+                "description": "Select sensors to add to the display, you can maximum add 3 sensors\nTips: to delete all sensors, please select 'Delete'.\nCurrently available sensors Types:temperature, humidity, illuminance",
                 "title": "Add other sensors"
             },
             "cmd": {
